@@ -68,7 +68,7 @@ async function handleRelease(release) {
     const commonEmbed = {
         title: release.name,
         color: 1190012,
-        "thread_name": release.name,
+        thread_name: release.name,
         timestamp: new Date().toISOString()
     };
 
