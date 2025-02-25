@@ -57,7 +57,7 @@ async function handleDiscussion(discussion) {
                 timestamp: new Date().toISOString()
             }
         ],
-        thread_name: title,
+        thread_name: `${titlePrefix}: ${discussion.title}`,
     });
 }
 
