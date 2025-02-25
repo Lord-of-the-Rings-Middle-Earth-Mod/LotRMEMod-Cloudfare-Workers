@@ -5,3 +5,6 @@ workers_dev = true
 
 # Entry point
 main = "src/index.js"
+
+# last changed
+compatibility_date = "2025-02-25"
