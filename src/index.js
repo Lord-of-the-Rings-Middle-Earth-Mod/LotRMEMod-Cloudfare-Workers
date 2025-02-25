@@ -28,6 +28,7 @@ async function handleGitHubWebhook(request) {
 async function handleDiscussion(discussion) {
     const category = discussion.category.name;
     let webhookUrl, username, titlePrefix;
+    let useThread = false;
 
     if (category === "Announcements") {
         webhookUrl = "https://discord.com/api/webhooks/1343922786049200128/da-4-nfaHkvhOn0x0XNMDvBbTvwa06zEU0vvspREnAgwTBrjjZmRo35KQ7bHQM5NOFdW";
@@ -37,15 +38,17 @@ async function handleDiscussion(discussion) {
         webhookUrl = "https://discord.com/api/webhooks/1343923403979227146/NOJfDPLn14WicKJBrkn0CUWHISTqYMVQ6SVq1PT7YU9N22fnPY6smCn6-rKSVthHoVMG";
         username = "GitHub FAQ";
         titlePrefix = "GitHub FAQ";
+        useThread = true;
     } else if (category === "Ideas and Suggestions") {
         webhookUrl = "https://discord.com/api/webhooks/1343923510644314132/Ry9FBjsDHCMx3J6aSCoBiOfSHSGiwiQLCZHisoGiu9vA2uBw2bMEftWlsEEuJsAXgwht";
         username = "GitHub Suggestions";
         titlePrefix = "GitHub Suggestion";
+        useThread = true;
     } else {
         return new Response("Ignored", { status: 200 });
     }
 
-    return postToDiscord(webhookUrl, {
+    const payload = {
         username: username,
         avatar_url: "https://drive.google.com/uc?id=1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi",
         embeds: [
@@ -56,9 +59,14 @@ async function handleDiscussion(discussion) {
                 color: 1190012,
                 timestamp: new Date().toISOString()
             }
-        ],
-        thread_name: `${titlePrefix}: ${discussion.title}`,
-    });
+        ]
+    };
+
+    if (useThread) {
+        payload.thread_name = `${titlePrefix}: ${discussion.title}`;
+    }
+
+    return postToDiscord(webhookUrl, payload);
 }
 
 // GitHub Releases (News & Changelog)
