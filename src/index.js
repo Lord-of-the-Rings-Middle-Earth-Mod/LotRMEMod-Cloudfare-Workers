@@ -56,7 +56,8 @@ async function handleDiscussion(discussion) {
                 color: 1190012,
                 timestamp: new Date().toISOString()
             }
-        ]
+        ],
+        thread_name: title,
     });
 }
 
@@ -68,7 +69,6 @@ async function handleRelease(release) {
     const commonEmbed = {
         title: release.name,
         color: 1190012,
-        thread_name: release.name,
         timestamp: new Date().toISOString()
     };
 
