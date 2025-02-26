@@ -11,6 +11,6 @@ compatibility_date = "2025-02-25"
 
 # Webhook links
 [vars]
-SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1301226095584084059/_VRnk4v15GjEa_poXiWI27gTk00_3NB2AQxhheCtYE191RivFNxWsjJNEZXEkIdY-qz2"
-NEWS_WEBHOOK = "https://discord.com/api/webhooks/1344295085797277728/IkpbMIPwm68YxjD0xG1fSUheYeAQUsa1PuiBjebiOaSvAAiJvYMXeW3aTi6QaB0w4gKg"
-CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1301097428606517268/Z6R6lt5g2hKpUZMaBT7ro-o3d9-YZdpPrkbDzux6ubw8H227ykoCXwO19F-wlIus-b5-"
+SUGGESTIONS_WEBHOOK = "" 
+NEWS_WEBHOOK = ""
+CHANGELOG_WEBHOOK = ""
