@@ -31,11 +31,11 @@ async function handleDiscussion(discussion) {
     let useThread = false;
 
     if (category === "Announcements") {
-        webhookUrl = env.NEWS_WEBHOOK;
+        webhookUrl = NEWS_WEBHOOK;
         username = "GitHub Announcements";
         titlePrefix = "GitHub Announcement";
     } else if (category === "Ideas and Suggestions") {
-        webhookUrl = env.SUGGESTIONS_WEBHOOK;
+        webhookUrl = SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
         titlePrefix = "GitHub Suggestion";
         useThread = true;
@@ -66,8 +66,6 @@ async function handleDiscussion(discussion) {
 
 // GitHub Releases (News & Changelog)
 async function handleRelease(release) {
-    const newsWebhook = "https://discord.com/api/webhooks/1343922786049200128/da-4-nfaHkvhOn0x0XNMDvBbTvwa06zEU0vvspREnAgwTBrjjZmRo35KQ7bHQM5NOFdW";
-    const changelogWebhook = "https://discord.com/api/webhooks/1343922993058943088/tjwLwsyitROa4Boni_61jSZHggrV4wWyRPrgLAsypdrpy9QF9tSDVKJnCQZgK-aorVY1";
     
     const commonEmbed = {
         title: release.name,
@@ -106,8 +104,8 @@ async function handleRelease(release) {
         ]
     };
 
-    await postToDiscord(env.NEWS_WEBHOOK, newsMessage);
-    await postToDiscord(env.CHANGELOG_WEBHOOK, changelogMessage);
+    await postToDiscord(NEWS_WEBHOOK, newsMessage);
+    await postToDiscord(CHANGELOG_WEBHOOK, changelogMessage);
 
     return new Response("Success", { status: 200 });
 }
