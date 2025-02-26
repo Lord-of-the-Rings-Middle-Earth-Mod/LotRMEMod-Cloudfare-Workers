@@ -59,7 +59,8 @@ async function handleDiscussion(discussion) {
                 description: discussion.body,
                 url: discussion.html_url,
                 color: 1190012,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                footer: { text : "This post originates from GitHub." }
             }
         ]
     };
@@ -106,7 +107,7 @@ async function handleRelease(release) {
             {
                 ...commonEmbed,
                 url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md",
-                description: release.body
+                description: release.body,
             }
         ]
     };
