@@ -1,3 +1,7 @@
+const NEWS_WEBHOOK = "https://discord.com/api/webhooks/1343922786049200128/da-4-nfaHkvhOn0x0XNMDvBbTvwa06zEU0vvspREnAgwTBrjjZmRo35KQ7bHQM5NOFdW";
+const CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1343922993058943088/tjwLwsyitROa4Boni_61jSZHggrV4wWyRPrgLAsypdrpy9QF9tSDVKJnCQZgK-aorVY1";
+const SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1343923510644314132/Ry9FBjsDHCMx3J6aSCoBiOfSHSGiwiQLCZHisoGiu9vA2uBw2bMEftWlsEEuJsAXgwht";
+
 export default {
     async fetch(request) {
         const url = new URL(request.url);
@@ -7,10 +11,6 @@ export default {
         return new Response("Not found", { status: 404 });
     }
 };
-
-const NEWS_WEBHOOK = NEWS_WEBHOOK;
-const CHANGELOG_WEBHOOK = CHANGELOG_WEBHOOK;
-const SUGGESTIONS_WEBHOOK = SUGGESTIONS_WEBHOOK;
 
 async function handleGitHubWebhook(request) {
     const data = await request.json();
