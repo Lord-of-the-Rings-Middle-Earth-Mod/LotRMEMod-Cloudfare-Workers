@@ -8,9 +8,3 @@ main = "src/index.js"
 
 # last changed
 compatibility_date = "2025-02-25"
-
-# Webhook links
-[vars]
-NEWS_WEBHOOK = "https://discord.com/api/webhooks/1343922786049200128/da-4-nfaHkvhOn0x0XNMDvBbTvwa06zEU0vvspREnAgwTBrjjZmRo35KQ7bHQM5NOFdW"
-CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1343922993058943088/tjwLwsyitROa4Boni_61jSZHggrV4wWyRPrgLAsypdrpy9QF9tSDVKJnCQZgK-aorVY1"
-SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1343923510644314132/Ry9FBjsDHCMx3J6aSCoBiOfSHSGiwiQLCZHisoGiu9vA2uBw2bMEftWlsEEuJsAXgwht"
