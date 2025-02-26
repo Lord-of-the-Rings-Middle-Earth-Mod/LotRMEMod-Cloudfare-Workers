@@ -1,6 +1,5 @@
 name = "lotrme-github-posts"
 type = "javascript"
-account_id = "18e4505e0d7087e09ca39b1128f2cd7e"
 workers_dev = true
 
 # Entry point
