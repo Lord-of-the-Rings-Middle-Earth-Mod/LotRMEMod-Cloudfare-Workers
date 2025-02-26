@@ -31,14 +31,9 @@ async function handleDiscussion(discussion) {
     let useThread = false;
 
     if (category === "Announcements") {
-        webhookUrl = env.ANNOUNCEMENTS_WEBHOOK;
+        webhookUrl = env.NEWS_WEBHOOK;
         username = "GitHub Announcements";
         titlePrefix = "GitHub Announcement";
-    } else if (category === "FAQ") {
-        webhookUrl = env.FAQ_WEBHOOK;
-        username = "GitHub FAQ";
-        titlePrefix = "GitHub FAQ";
-        useThread = true;
     } else if (category === "Ideas and Suggestions") {
         webhookUrl = env.SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
