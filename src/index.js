@@ -17,7 +17,7 @@ async function handleGitHubWebhook(request) {
 
     if (data.discussion) {
         return handleDiscussion(data.discussion);
-    } else if (data.release) {
+    } else if (data.release && data.action == "published") {
         return handleRelease(data.release);
     }
 
@@ -31,16 +31,16 @@ async function handleDiscussion(discussion) {
     let useThread = false;
 
     if (category === "Announcements") {
-        webhookUrl = "https://discord.com/api/webhooks/1343922786049200128/da-4-nfaHkvhOn0x0XNMDvBbTvwa06zEU0vvspREnAgwTBrjjZmRo35KQ7bHQM5NOFdW";
+        webhookUrl = env.ANNOUNCEMENTS_WEBHOOK;
         username = "GitHub Announcements";
         titlePrefix = "GitHub Announcement";
     } else if (category === "FAQ") {
-        webhookUrl = "https://discord.com/api/webhooks/1343923403979227146/NOJfDPLn14WicKJBrkn0CUWHISTqYMVQ6SVq1PT7YU9N22fnPY6smCn6-rKSVthHoVMG";
+        webhookUrl = env.FAQ_WEBHOOK;
         username = "GitHub FAQ";
         titlePrefix = "GitHub FAQ";
         useThread = true;
     } else if (category === "Ideas and Suggestions") {
-        webhookUrl = "https://discord.com/api/webhooks/1343923510644314132/Ry9FBjsDHCMx3J6aSCoBiOfSHSGiwiQLCZHisoGiu9vA2uBw2bMEftWlsEEuJsAXgwht";
+        webhookUrl = env.SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
         titlePrefix = "GitHub Suggestion";
         useThread = true;
@@ -92,7 +92,8 @@ async function handleRelease(release) {
                 fields: [
                     { name: "GitHub", value: `[Download](${release.html_url})`, inline: true },
                     { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)`, inline: true }
-                ]
+                ],
+                footer: { text: "You can see the changelog in <#1241277621766197268>"}
             }
         ]
     };
@@ -105,14 +106,13 @@ async function handleRelease(release) {
             {
                 ...commonEmbed,
                 url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md",
-                description: release.body,
-                footer: { text: "View the full Changelog on GitHub" }
+                description: release.body
             }
         ]
     };
 
-    await postToDiscord(newsWebhook, newsMessage);
-    await postToDiscord(changelogWebhook, changelogMessage);
+    await postToDiscord(env.NEWS_WEBHOOK, newsMessage);
+    await postToDiscord(env.CHANGELOG_WEBHOOK, changelogMessage);
 
     return new Response("Success", { status: 200 });
 }
