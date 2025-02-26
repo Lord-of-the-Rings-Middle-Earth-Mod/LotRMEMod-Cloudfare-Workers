@@ -2,6 +2,9 @@ const NEWS_WEBHOOK = "https://discord.com/api/webhooks/1344295085797277728/IkpbM
 const CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1301097428606517268/Z6R6lt5g2hKpUZMaBT7ro-o3d9-YZdpPrkbDzux6ubw8H227ykoCXwO19F-wlIus-b5-";
 const SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1301226095584084059/_VRnk4v15GjEa_poXiWI27gTk00_3NB2AQxhheCtYE191RivFNxWsjJNEZXEkIdY-qz2";
 
+const NEWS_PING = "<@&1297538431001432135>";
+const RELEASE_PING = "<@&1297543002222493761>";
+
 export default {
     async fetch(request) {
         const url = new URL(request.url);
@@ -37,7 +40,7 @@ async function handleDiscussion(discussion) {
     if (category === "Announcements") {
         webhookUrl = NEWS_WEBHOOK;
         username = "GitHub Announcements";
-        titlePrefix = "GitHub Announcement";
+        titlePrefix = "<@&1297538431001432135> GitHub Announcement";
     } else if (category === "Ideas and Suggestions") {
         webhookUrl = SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
@@ -85,7 +88,7 @@ async function handleRelease(release) {
             {
                 ...commonEmbed,
                 url: release.html_url,
-                description: "A new Release has dropped.",
+                description: "$(RELEASE_PING) A new Release has dropped.",
                 fields: [
                     { name: "GitHub", value: `[Download](${release.html_url})`, inline: true },
                     { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)`, inline: true }
