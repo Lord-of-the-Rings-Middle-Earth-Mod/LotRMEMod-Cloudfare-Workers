@@ -8,9 +8,3 @@ main = "src/index.js"
 
 # last changed
 compatibility_date = "2025-02-25"
-
-# Webhook links
-[vars]
-SUGGESTIONS_WEBHOOK = "" 
-NEWS_WEBHOOK = ""
-CHANGELOG_WEBHOOK = ""
