@@ -8,6 +8,10 @@ export default {
     }
 };
 
+const NEWS_WEBHOOK = NEWS_WEBHOOK;
+const CHANGELOG_WEBHOOK = CHANGELOG_WEBHOOK;
+const SUGGESTIONS_WEBHOOK = SUGGESTIONS_WEBHOOK;
+
 async function handleGitHubWebhook(request) {
     const data = await request.json();
 
