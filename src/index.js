@@ -1,6 +1,6 @@
-const NEWS_WEBHOOK = "https://discord.com/api/webhooks/1343922786049200128/da-4-nfaHkvhOn0x0XNMDvBbTvwa06zEU0vvspREnAgwTBrjjZmRo35KQ7bHQM5NOFdW";
-const CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1343922993058943088/tjwLwsyitROa4Boni_61jSZHggrV4wWyRPrgLAsypdrpy9QF9tSDVKJnCQZgK-aorVY1";
-const SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1343923510644314132/Ry9FBjsDHCMx3J6aSCoBiOfSHSGiwiQLCZHisoGiu9vA2uBw2bMEftWlsEEuJsAXgwht";
+const NEWS_WEBHOOK = "https://discord.com/api/webhooks/1344295085797277728/IkpbMIPwm68YxjD0xG1fSUheYeAQUsa1PuiBjebiOaSvAAiJvYMXeW3aTi6QaB0w4gKg";
+const CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1301097428606517268/Z6R6lt5g2hKpUZMaBT7ro-o3d9-YZdpPrkbDzux6ubw8H227ykoCXwO19F-wlIus-b5-";
+const SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1301226095584084059/_VRnk4v15GjEa_poXiWI27gTk00_3NB2AQxhheCtYE191RivFNxWsjJNEZXEkIdY-qz2";
 
 export default {
     async fetch(request) {
