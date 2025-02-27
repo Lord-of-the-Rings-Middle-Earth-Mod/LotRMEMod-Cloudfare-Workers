@@ -40,7 +40,7 @@ async function handleDiscussion(discussion) {
     if (category === "Announcements") {
         webhookUrl = NEWS_WEBHOOK;
         username = "GitHub Announcements";
-        titlePrefix = "<@&1297538431001432135> GitHub Announcement";
+        titlePrefix = `$(NEWS_PING) GitHub Announcement`;
     } else if (category === "Ideas and Suggestions") {
         webhookUrl = SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
@@ -89,7 +89,7 @@ async function handleRelease(release) {
             {
                 ...commonEmbed,
                 url: release.html_url,
-                description: "$(RELEASE_PING) A new Release has dropped.",
+                description: `$(RELEASE_PING) A new Release has dropped.`,
                 fields: [
                     { name: "GitHub", value: `[Download](${release.html_url})`, inline: true },
                     { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)`, inline: true }
