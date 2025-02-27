@@ -37,10 +37,13 @@ async function handleDiscussion(discussion) {
     let webhookUrl, username, titlePrefix;
     let useThread = false;
 
+    let embedDescription = discussion.body;
+
     if (category === "Announcements") {
         webhookUrl = NEWS_WEBHOOK;
         username = "GitHub Announcements";
-        titlePrefix = `$(NEWS_PING) GitHub Announcement`;
+        titlePrefix = "GitHub Announcement";
+        embedDescription = `$(NEWS_PING) $(discussion.body)`;
     } else if (category === "Ideas and Suggestions") {
         webhookUrl = SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
@@ -56,7 +59,7 @@ async function handleDiscussion(discussion) {
         embeds: [
             {
                 title: `${titlePrefix}: ${discussion.title}`,
-                description: discussion.body,
+                description: embedDescription,
                 url: discussion.html_url,
                 color: 1190012,
                 timestamp: new Date().toISOString(),
