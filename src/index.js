@@ -3,6 +3,7 @@ const CHANGELOG_WEBHOOK = "https://discord.com/api/webhooks/1301097428606517268/
 const SUGGESTIONS_WEBHOOK = "https://discord.com/api/webhooks/1301226095584084059/_VRnk4v15GjEa_poXiWI27gTk00_3NB2AQxhheCtYE191RivFNxWsjJNEZXEkIdY-qz2";
 
 const NEWS_PING = "<@&1297538431001432135>";
+const MONTHLY_UPDATE_PING = "<@&1346200306911940639>";
 const RELEASE_PING = "<@&1297543002222493761>";
 
 export default {
@@ -43,7 +44,11 @@ async function handleDiscussion(discussion) {
         webhookUrl = NEWS_WEBHOOK;
         username = "GitHub Announcements";
         titlePrefix = "GitHub Announcement";
-        embedDescription = `$(NEWS_PING) $(discussion.body)`;
+
+        const hasMonthlyUpdatesLabel = discussion.labels.some(label => label.name === "Monthly Updates");
+        const rolePing = hasMonthlyUpdatesLabel ? MONTHLY_UPDATE_PING : NEWS_PING; 
+
+        embedDescription = `${rolePing} ${discussion.body}`;
     } else if (category === "Ideas and Suggestions") {
         webhookUrl = SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
