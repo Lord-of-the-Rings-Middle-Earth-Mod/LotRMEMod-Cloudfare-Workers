@@ -6,9 +6,10 @@ accout_id = "18e4505e0d7087e09ca39b1128f2cd7e"
 # Entry point
 main = "src/index.js"
 
+# last changed
+compatibility_date = "2025-03-19"
+
+
 # wrangler.toml (wrangler v3.88.0^)
 [observability.logs]
 enabled = true
-
-# last changed
-compatibility_date = "2025-03-19"
