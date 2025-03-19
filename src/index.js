@@ -49,7 +49,7 @@ async function handleDiscussion(discussion) {
         const rolePing = hasMonthlyUpdatesLabel ? MONTHLY_UPDATE_PING : NEWS_PING; 
 
         embedDescription = `${rolePing} ${discussion.body}`;
-    } else if (category === "Ideas and Suggestions") {
+    } else if (category === "Ideas and suggestions") {
         webhookUrl = SUGGESTIONS_WEBHOOK;
         username = "GitHub Suggestions";
         titlePrefix = "GitHub Suggestion";
