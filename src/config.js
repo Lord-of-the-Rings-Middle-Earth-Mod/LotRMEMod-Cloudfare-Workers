@@ -9,7 +9,8 @@ export const WEBHOOKS = {
 export const PINGS = {
   news: "<@&1297538431001432135>",
   monthly: "<@&1346200306911940639>",
-  release: "<@&1297543002222493761>"
+  release: "<@&1297543002222493761>",
+  fabricupdates: "<&1371820347543916554>"
 };
 
 // Avatar URL to use in Discord messages
