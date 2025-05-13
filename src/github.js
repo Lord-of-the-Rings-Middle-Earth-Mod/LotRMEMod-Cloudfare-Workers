@@ -1,5 +1,5 @@
 import { postToDiscord } from './discord.js'; // For sending messages to Discord
-import { WEBHOOKS, PINGS } from './config.js'; // The Webhook URLs and Pings
+import { WEBHOOKS, PINGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; // The Webhook URLs, Pings, Avatar, and Footer Text
 
 export async function handleGitHubWebhook(request) {
     const data = await request.json();
@@ -52,7 +52,7 @@ async function handleDiscussion(discussion) {
     // Create the Discord payload with the discussion details
     const payload = {
         username: username,
-        avatar_url: "https://drive.google.com/uc?id=1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi",
+        avatar_url: AVATAR_URL,  // Using avatar URL from config.js
         embeds: [
             {
                 title: `${titlePrefix}: ${discussion.title}`,
@@ -60,7 +60,7 @@ async function handleDiscussion(discussion) {
                 url: discussion.html_url,
                 color: 1190012,
                 timestamp: new Date().toISOString(),
-                footer: { text: "This post originates from GitHub." }
+                footer: { text: FOOTER_TEXT }  // Using footer text from config.js
             }
         ]
     };
@@ -84,7 +84,7 @@ async function handleRelease(release) {
     // Message for the News channel
     const newsMessage = {
         username: "Releases",
-        avatar_url: "https://drive.google.com/uc?id=1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi",
+        avatar_url: AVATAR_URL,  // Using avatar URL from config.js
         embeds: [
             {
                 ...commonEmbed,
@@ -94,7 +94,7 @@ async function handleRelease(release) {
                     { name: "GitHub", value: `[Download](${release.html_url})`, inline: true },
                     { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)`, inline: true }
                 ],
-                footer: { text: "You can see the changelog in <#1241277621766197268>" }
+                footer: { text: FOOTER_TEXT }  // Using footer text from config.js
             }
         ]
     };
@@ -102,7 +102,7 @@ async function handleRelease(release) {
     // Message for the Changelog channel
     const changelogMessage = {
         username: "Changelog",
-        avatar_url: "https://drive.google.com/uc?id=1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi",
+        avatar_url: AVATAR_URL,  // Using avatar URL from config.js
         embeds: [
             {
                 ...commonEmbed,
