@@ -16,3 +16,7 @@ crons = ["0 0 * * *"]
 
 [observability.logs]
 enabled = true
+
+[[kv_namespaces]]
+binding = "FABRIC_KV" # Der Name, den du im Code verwendest
+id = "c762173a2f01465faee2d33d4631e9c8" # Deine Namespace-ID
