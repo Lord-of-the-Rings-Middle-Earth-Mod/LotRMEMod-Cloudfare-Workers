@@ -8,49 +8,58 @@ const POSTED_IDS_KEY = "posted_ids"; // Der Schlüssel für die geposteten IDs i
 
 // Verarbeitet den RSS-Feed und sendet neue Posts an Discord
 export const processRssFeed = async (env, feedUrl, webhookUrl, kvID) => {
-  const feedRes = await fetch(feedUrl);
-  const feedText = await feedRes.text();
+  try {
+    const feedRes = await fetch(feedUrl);
+    const feedText = await feedRes.text();
 
-  const parser = new RSSParser();
-  const feed = await parser.parseString(feedText);
+    const parser = new RSSParser();
+    const feed = await parser.parseString(feedText);
 
-  // Liest bereits gepostete IDs aus dem KV
-  const postedIds = await readFromKV(env, kvID, POSTED_IDS_KEY) || [];
+    // Liest bereits gepostete IDs aus dem KV
+    const postedIds = await readFromKV(env, kvID, POSTED_IDS_KEY) || [];
 
-  // Iteriert über alle neuen Feed-Items
-  feed.items.forEach(async (item) => {
-    const id = item.id;
-    const title = item.title;
-    const link = item.link;
-    const content = item.content;
-    
-    // Wenn der Post bereits gepostet wurde, überspringen
-    if (postedIds.includes(id)) {
-      return;
+    // Iteriert über alle neuen Feed-Items
+    for (const item of feed.items) {
+      const id = item.id;
+      const title = item.title;
+      const link = item.link;
+      const content = item.content;
+      
+      // Wenn der Post bereits gepostet wurde, überspringen
+      if (postedIds.includes(id)) {
+        console.log(`Post mit ID ${id} bereits gepostet. Überspringe...`);
+        continue;
+      }
+
+      // Bereinigt den HTML-Inhalt
+      const cleanedContent = cleanHtml(content);
+      const discordMarkdown = toDiscordMarkdown(cleanedContent, link);
+
+      const payload = {
+        username: "Fabric RSS Bot",
+        avatar_url: AVATAR_URL,
+        content: `${PINGS.fabricupdates}\n\n${discordMarkdown}`,
+        footer: {
+          text: FOOTER_TEXT
+        }
+      };
+
+      // Posten an Discord
+      const discordResponse = await postToDiscord(webhookUrl, payload);
+      if (!discordResponse.ok) {
+        console.error(`Fehler beim Posten auf Discord: ${discordResponse.statusText}`);
+        continue;
+      }
+
+      // ID speichern, um Duplikate zu vermeiden
+      postedIds.push(id);
+      await saveToKV(env, kvID, POSTED_IDS_KEY, postedIds);
     }
 
-    // Bereinigt den HTML-Inhalt
-    const cleanedContent = cleanHtml(content);
-    const discordMarkdown = toDiscordMarkdown(cleanedContent, link);
-
-    const payload = {
-      username: "Fabric RSS Bot",
-      avatar_url: AVATAR_URL,
-      content: `${PINGS.news}\n\n${discordMarkdown}`,
-      footer: {
-        text: FOOTER_TEXT
-      }
-    };
-
-    // Posten an Discord
-    await postToDiscord(webhookUrl, payload);
-
-    // ID speichern, um Duplikate zu vermeiden
-    postedIds.push(id);
-    await saveToKV(env, kvID, POSTED_IDS_KEY, postedIds);
-  });
-
-  console.log('Neue Posts verarbeitet und gepostet.');
+    console.log('Neue Posts verarbeitet und gepostet.');
+  } catch (error) {
+    console.error('Fehler beim Verarbeiten des RSS-Feeds:', error);
+  }
 };
 
 // Hilfsfunktionen für das Bereinigen und Formatieren von HTML-Inhalten
