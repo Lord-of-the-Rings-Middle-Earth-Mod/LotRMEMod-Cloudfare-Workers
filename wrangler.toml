@@ -13,7 +13,7 @@ main = "src/index.js"
 crons = ["0 0 * * *"]
 
 [build]
-  external_modules = ["rss-parser"]
+  webpack_config = "webpack.config.js"
 
 [observability.logs]
 enabled = true
