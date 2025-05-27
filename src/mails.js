@@ -1,4 +1,4 @@
-export async function handleIncomingEmail(request, env) {
+export async function handleMails(request, env) {
   try {
     const emailData = await request.json();
 
