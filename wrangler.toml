@@ -1,15 +1,22 @@
 name = "lotrme-github-posts"
 type = "javascript"
+account_id = "18e4505e0d7087e09ca39b1128f2cd7e"
 workers_dev = true
-accout_id = "18e4505e0d7087e09ca39b1128f2cd7e"
 
-# Entry point
-main = "src/index.js"
-
-# last changed
 compatibility_date = "2025-03-19"
 
+# module format is required to have fetch() as well as scheduled()
+[build]
+upload.format = "modules"
+upload.main = "./src/index.js"
 
-# wrangler.toml (wrangler v3.88.0^)
+# cron trigger for running every day
+[triggers]
+crons = ["0 0 * * *"]
+
 [observability.logs]
 enabled = true
+
+[[kv_namespaces]]
+binding = "FABRIC_KV" # Der Name, den du im Code verwendest
+id = "c762173a2f01465faee2d33d4631e9c8" # Deine Namespace-ID
