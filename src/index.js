@@ -10,6 +10,10 @@ export default {
       return handleGitHubWebhook(request, env);
     }
 
+    if (url.pathname === "/mails" && request.method === "POST") {
+      return hanldMails(request, env);
+    }
+
     // Optionaler Testendpunkt für manuelles Auslösen des RSS-Feeds
     if (url.pathname === "/rss") {
       const feedUrl = "https://fabricmc.net/feed.xml"; // Beispiel
@@ -17,5 +21,10 @@ export default {
     }
 
     return new Response("Not found", { status: 404 });
+  }
+
+  async scheduled(event, env, ctx) {
+    const feedUrl = "https://fabricmc.net/feed.xml"; 
+    await processRssFeed(env, feedUrl, WEBHOOKS.fabricupdates, env.FABRIC_KV);
   }
 };
