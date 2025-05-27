@@ -12,6 +12,9 @@ main = "src/index.js"
 [triggers]
 crons = ["0 0 * * *"]
 
+[build]
+  external_modules = ["rss-parser"]
+
 [observability.logs]
 enabled = true
 
