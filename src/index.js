@@ -1,5 +1,6 @@
 import { handleGitHubWebhook } from './github.js';
 import { processRssFeed } from './rss-feed.js';
+import { handleMails } from './mails.js';
 import { WEBHOOKS } from './config.js';
 
 export default {
