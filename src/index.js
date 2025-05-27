@@ -12,7 +12,7 @@ export default {
     }
 
     if (url.pathname === "/mails" && request.method === "POST") {
-      return hanldMails(request, env);
+      return handleMails(request, env);
     }
 
     // Optionaler Testendpunkt für manuelles Auslösen des RSS-Feeds
