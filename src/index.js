@@ -25,7 +25,7 @@ export default {
   }
 };
 
-async scheduled(event, env, ctx) {
-  const feedUrl = "https://fabricmc.net/feed.xml"; 
+export const scheduled = async (event, env, ctx) => {
+  const feedUrl = "https://fabricmc.net/feed.xml";
   await processRssFeed(env, feedUrl, WEBHOOKS.fabricupdates, env.FABRIC_KV);
-}
+};
