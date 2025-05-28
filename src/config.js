@@ -15,7 +15,7 @@ export const PINGS = {
 };
 
 // Avatar URL to use in Discord messages
-export const AVATAR_URL = "https://drive.google.com/file/d/1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi/view";
+export const AVATAR_URL = "https://media.discordapp.net/attachments/1376880974138310777/1377232583888212049/LotrModLogo.png?ex=6838374b&is=6836e5cb&hm=17fec6e20e50ea0c283bbcb252e3c8c3bba8c8f702d51ead1793813bf9f2fbc0&=&format=webp&quality=lossless&width=939&height=940";
 
 // A default text to use for footer in messages
 export const FOOTER_TEXT = "This post originates from GitHub.";
