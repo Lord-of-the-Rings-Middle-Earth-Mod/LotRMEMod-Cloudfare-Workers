@@ -23,9 +23,9 @@ export default {
 
     return new Response("Not found", { status: 404 });
   }
+};
 
-  async scheduled(event, env, ctx) {
-    const feedUrl = "https://fabricmc.net/feed.xml"; 
-    await processRssFeed(env, feedUrl, WEBHOOKS.fabricupdates, env.FABRIC_KV);
-  }
+export const scheduled = async (event, env, ctx) => {
+  const feedUrl = "https://fabricmc.net/feed.xml";
+  await processRssFeed(env, feedUrl, WEBHOOKS.fabricupdates, env.FABRIC_KV);
 };

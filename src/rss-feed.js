@@ -1,4 +1,4 @@
-import { readFromKV, saveToKV } from './kvUtils.js';
+import { readFromKV, saveToKV } from './kvutils.js';
 import { WEBHOOKS, PINGS, AVATAR_URL, FOOTER_TEXT } from './config.js';
 import { postToDiscord } from './discord.js';
 import RSSParser from 'rss-parser';
