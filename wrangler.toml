@@ -12,9 +12,6 @@ main = "src/index.js"
 [triggers]
 crons = ["0 0 * * *"]
 
-[build]
-  webpack_config = "webpack.config.js"
-
 [observability.logs]
 enabled = true
 
