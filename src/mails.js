@@ -11,7 +11,7 @@ export async function handleMails(request, env) {
 
     const payload = {
         username: "Mail Bot",
-        avatar_url: AVATAR_URL,
+        avatar_url: "https://drive.google.com/file/d/1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi/view?usp=sharing",
         content: `📧 New E-Mail from **${from}**:\n**${subject}**\n\n${body.substring(0, 1000)}`,
         footer: {
           text: FOOTER_TEXT
