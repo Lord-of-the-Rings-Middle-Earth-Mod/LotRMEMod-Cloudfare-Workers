@@ -15,7 +15,7 @@ export const PINGS = {
 };
 
 // Avatar URL to use in Discord messages
-export const AVATAR_URL = "https://drive.google.com/uc?id=YOUR_AVATAR_IMAGE_ID";
+export const AVATAR_URL = "https://drive.google.com/file/d/1qSD9k5acGXM2T7XdH_yjJdEZjF8VLUIi/view?usp=sharing";
 
 // A default text to use for footer in messages
 export const FOOTER_TEXT = "This post originates from GitHub.";
