@@ -11,7 +11,7 @@ export async function handleMails(request, env) {
 
     const payload = {
         username: "LotR ME Mail Bot",
-        avatar_url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/LotRMEMod-Cloudfare-Workers/blob/main/assets/LotrModLogo.png",
+        avatar_url: AVATAR_URL,
         content: `📧 New E-Mail from **${from}**:\n**${subject}**\n\n${body.substring(0, 1000)}`,
         footer: {
           text: FOOTER_TEXT
