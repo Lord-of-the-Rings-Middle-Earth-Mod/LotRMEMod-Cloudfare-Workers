@@ -10,7 +10,7 @@ export async function handleMails(request, env) {
     const body = emailData.plain || emailData.html || "No content";
 
     const payload = {
-        username: "Fabric RSS Bot",
+        username: "Mail Bot",
         avatar_url: AVATAR_URL,
         content: `📧 New E-Mail from **${from}**:\n**${subject}**\n\n${body.substring(0, 1000)}`,
         footer: {
