@@ -1,2 +1,2 @@
 # LotRMEMod-Cloudfare-Workers
-In this repository our Cloudfare Workers, that manage some Github Discord Integration
+This Repository contains the Code for the Cloudfare Worker that runs several discord integrations.
