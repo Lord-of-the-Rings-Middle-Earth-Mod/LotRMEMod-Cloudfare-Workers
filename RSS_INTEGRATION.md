@@ -81,6 +81,13 @@ To test the RSS integration:
 ## Dependencies
 
 - Native Cloudflare Worker APIs (fetch, DOMParser)
-- KV storage for persistence
-- Discord webhook for message delivery
+- [KV Storage](KV_STORAGE.md) for entry tracking and persistence
+- [Discord Integration](DISCORD_INTEGRATION.md) for webhook message delivery
+- Configuration from `config.js` for webhooks and role pings
 - No external libraries required
+
+## Related Documentation
+
+- [Discord Integration](DISCORD_INTEGRATION.md) - Shared Discord posting functionality
+- [KV Storage](KV_STORAGE.md) - Persistent storage utilities used for tracking
+- [Configuration](README.md#configuration) - Webhook and role configuration details
