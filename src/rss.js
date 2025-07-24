@@ -133,10 +133,16 @@ function extractXMLContent(xmlContent, tagName) {
  * @returns {string} - Link href or empty string
  */
 function extractLinkHref(xmlContent) {
-  // Look for link with rel="alternate" attribute
-  const alternateRegex = /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["'][^>]*>/i;
-  let match = xmlContent.match(alternateRegex);
+  // Look for link with rel="alternate" attribute - check both attribute orders
+  const alternateRegex1 = /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["'][^>]*>/i;
+  const alternateRegex2 = /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']alternate["'][^>]*>/i;
   
+  let match = xmlContent.match(alternateRegex1);
+  if (match && match[1]) {
+    return match[1];
+  }
+  
+  match = xmlContent.match(alternateRegex2);
   if (match && match[1]) {
     return match[1];
   }
