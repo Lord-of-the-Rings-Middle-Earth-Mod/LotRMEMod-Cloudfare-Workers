@@ -80,7 +80,7 @@ To test the RSS integration:
 
 ## Dependencies
 
-- Native Cloudflare Worker APIs (fetch, DOMParser)
+- Native Cloudflare Worker APIs (fetch only - uses regex-based XML parsing)
 - [KV Storage](KV_STORAGE.md) for entry tracking and persistence
 - [Discord Integration](DISCORD_INTEGRATION.md) for webhook message delivery
 - Configuration from `config.js` for webhooks and role pings
