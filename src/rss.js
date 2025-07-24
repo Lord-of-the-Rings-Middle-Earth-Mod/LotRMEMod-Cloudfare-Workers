@@ -75,28 +75,24 @@ export async function handleRSS(request, env) {
  * @returns {Array} - Array of entry objects with title, id, content, published
  */
 async function parseRSSFeed(rssText) {
-  // Parse XML using DOMParser (available in Cloudflare Workers)
-  const parser = new DOMParser();
-  const xmlDoc = parser.parseFromString(rssText, 'text/xml');
-  
-  // Check for parsing errors
-  const parserError = xmlDoc.querySelector('parsererror');
-  if (parserError) {
-    throw new Error('Failed to parse RSS XML');
-  }
-  
-  // Extract entries from the feed
+  // Use regex-based parsing since DOMParser is not available in Cloudflare Workers
   const entries = [];
-  const entryElements = xmlDoc.querySelectorAll('entry');
   
-  for (const entryElement of entryElements) {
+  // Extract all <entry> blocks
+  const entryRegex = /<entry[^>]*>([\s\S]*?)<\/entry>/gi;
+  let entryMatch;
+  
+  while ((entryMatch = entryRegex.exec(rssText)) !== null) {
+    const entryContent = entryMatch[1];
+    
     try {
+      // Extract individual fields from the entry
       const entry = {
-        title: getTextContent(entryElement, 'title'),
-        id: getTextContent(entryElement, 'id'),
-        content: getTextContent(entryElement, 'content'),
-        published: getTextContent(entryElement, 'published'),
-        link: getLinkHref(entryElement)
+        title: extractXMLContent(entryContent, 'title'),
+        id: extractXMLContent(entryContent, 'id'),
+        content: extractXMLContent(entryContent, 'content'),
+        published: extractXMLContent(entryContent, 'published'),
+        link: extractLinkHref(entryContent)
       };
       
       // Validate required fields
@@ -113,24 +109,58 @@ async function parseRSSFeed(rssText) {
 }
 
 /**
- * Helper function to safely get text content from XML element
- * @param {Element} parent - Parent XML element
+ * Helper function to extract text content from XML using regex
+ * @param {string} xmlContent - XML content string
  * @param {string} tagName - Tag name to search for
  * @returns {string} - Text content or empty string
  */
-function getTextContent(parent, tagName) {
-  const element = parent.querySelector(tagName);
-  return element ? element.textContent.trim() : '';
+function extractXMLContent(xmlContent, tagName) {
+  // Create regex to match the tag and extract content
+  const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+  const match = xmlContent.match(regex);
+  
+  if (match && match[1]) {
+    // Decode HTML entities and trim whitespace
+    return decodeHTMLEntities(match[1].trim());
+  }
+  
+  return '';
 }
 
 /**
- * Helper function to get href attribute from link element
- * @param {Element} parent - Parent XML element
+ * Helper function to extract href from link element using regex
+ * @param {string} xmlContent - XML content string
  * @returns {string} - Link href or empty string
  */
-function getLinkHref(parent) {
-  const linkElement = parent.querySelector('link[rel="alternate"]');
-  return linkElement ? linkElement.getAttribute('href') || '' : '';
+function extractLinkHref(xmlContent) {
+  // Look for link with rel="alternate" attribute
+  const alternateRegex = /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["'][^>]*>/i;
+  let match = xmlContent.match(alternateRegex);
+  
+  if (match && match[1]) {
+    return match[1];
+  }
+  
+  // Fallback: look for any link with href
+  const anyLinkRegex = /<link[^>]*href=["']([^"']+)["'][^>]*>/i;
+  match = xmlContent.match(anyLinkRegex);
+  
+  return match && match[1] ? match[1] : '';
+}
+
+/**
+ * Helper function to decode common HTML entities
+ * @param {string} text - Text with HTML entities
+ * @returns {string} - Decoded text
+ */
+function decodeHTMLEntities(text) {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
 }
 
 /**
