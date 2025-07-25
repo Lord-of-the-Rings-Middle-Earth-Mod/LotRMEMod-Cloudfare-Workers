@@ -48,9 +48,17 @@ export async function handleRSS(request, env) {
     
     for (const entry of sortedNewEntries) {
       try {
-        await sendEntryToDiscord(entry);
-        processedEntries.push(entry.id);
-        console.log(`Successfully processed entry: ${entry.title}`);
+        console.log(`Processing entry: ${entry.title}`);
+        const discordResponse = await sendEntryToDiscord(entry);
+        
+        if (discordResponse.status === 200) {
+          processedEntries.push(entry.id);
+          console.log(`Successfully processed entry: ${entry.title}`);
+        } else {
+          console.error(`Failed to send entry to Discord: ${entry.title}, Response: ${discordResponse.status}`);
+          // Still mark as processed to avoid retrying, but log the failure
+          processedEntries.push(entry.id);
+        }
       } catch (error) {
         console.error(`Failed to process entry ${entry.title}:`, error);
         // Continue processing other entries even if one fails
@@ -177,6 +185,12 @@ async function sendEntryToDiscord(entry) {
   // Clean up HTML content for description
   const cleanContent = stripHtml(entry.content).substring(0, 2000); // Limit length
   
+  // Ensure we have a valid URL for the entry
+  const entryUrl = entry.link || entry.id;
+  if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
+    console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
+  }
+  
   // Format the Discord payload according to specification
   const payload = {
     content: "<@&1371820347543916554>", // Role ping as specified
@@ -186,7 +200,7 @@ async function sendEntryToDiscord(entry) {
           text: "The original Post was made on the Fabric RSS-Feed"
         },
         title: entry.title,
-        url: entry.link || entry.id,
+        url: entryUrl,
         description: cleanContent,
         timestamp: entry.published
       }
@@ -199,8 +213,7 @@ async function sendEntryToDiscord(entry) {
             type: 2,
             style: 5,
             label: "Original Post",
-            url: entry.link || entry.id,
-            custom_id: `p_${Date.now()}`
+            url: entryUrl
           }
         ]
       }
