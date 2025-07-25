@@ -48,9 +48,17 @@ export async function handleRSS(request, env) {
     
     for (const entry of sortedNewEntries) {
       try {
-        await sendEntryToDiscord(entry);
-        processedEntries.push(entry.id);
-        console.log(`Successfully processed entry: ${entry.title}`);
+        console.log(`Processing entry: ${entry.title}`);
+        const discordResponse = await sendEntryToDiscord(entry);
+        
+        if (discordResponse.status === 200) {
+          processedEntries.push(entry.id);
+          console.log(`Successfully processed entry: ${entry.title}`);
+        } else {
+          console.error(`Failed to send entry to Discord: ${entry.title}, Response: ${discordResponse.status}`);
+          // Still mark as processed to avoid retrying, but log the failure
+          processedEntries.push(entry.id);
+        }
       } catch (error) {
         console.error(`Failed to process entry ${entry.title}:`, error);
         // Continue processing other entries even if one fails
@@ -199,8 +207,7 @@ async function sendEntryToDiscord(entry) {
             type: 2,
             style: 5,
             label: "Original Post",
-            url: entry.link || entry.id,
-            custom_id: `p_${Date.now()}`
+            url: entry.link || entry.id
           }
         ]
       }
