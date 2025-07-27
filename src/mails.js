@@ -14,19 +14,6 @@ export async function handleMails(request, env) {
         avatar_url: AVATAR_URL,
         content: `📧 New E-Mail from "${from}":\n# "${subject}"\n\n"${body}"`,
         embeds: [],
-        components: [
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                style: 5,
-                label: "Answer",
-                url: `mailto:${from}`
-              }
-            ]
-          }
-        ],
         thread_name: `"${subject}"`
       };
 
