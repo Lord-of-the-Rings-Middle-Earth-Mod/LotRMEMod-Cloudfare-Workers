@@ -1,6 +1,6 @@
 import { handleGitHubWebhook } from './github.js';
-import { processRssFeed } from './rss-feed.js';
 import { handleMails } from './mails.js';
+import { handleRSS } from './rss.js';
 import { WEBHOOKS } from './config.js';
 
 export default {
@@ -15,17 +15,15 @@ export default {
       return handleMails(request, env);
     }
 
-    // Optionaler Testendpunkt für manuelles Auslösen des RSS-Feeds
-    if (url.pathname === "/rss") {
-      const feedUrl = "https://fabricmc.net/feed.xml"; // Beispiel
-      return await processRssFeed(env, feedUrl, WEBHOOKS.fabricupdates, env.FABRIC_KV);
+    if (url.pathname === "/rss" && request.method === "POST") {
+      return handleRSS(request, env);
     }
 
     return new Response("Not found", { status: 404 });
-  }
-};
+  },
 
-export const scheduled = async (event, env, ctx) => {
-  const feedUrl = "https://fabricmc.net/feed.xml";
-  await processRssFeed(env, feedUrl, WEBHOOKS.fabricupdates, env.FABRIC_KV);
+  async scheduled(event, env, ctx) {
+    // Handle scheduled cron events - check RSS feed for new entries
+    ctx.waitUntil(handleRSS(null, env));
+  }
 };

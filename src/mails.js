@@ -1,5 +1,5 @@
 import { postToDiscord } from './discord.js';
-import { WEBHOOKS, PINGS, AVATAR_URL, FOOTER_TEXT } from './config.js';
+import { WEBHOOKS, PINGS, AVATAR_URL } from './config.js';
 
 export async function handleMails(request, env) {
   try {
@@ -10,12 +10,11 @@ export async function handleMails(request, env) {
     const body = emailData.plain || emailData.html || "No content";
 
     const payload = {
-        username: "Fabric RSS Bot",
+        username: "LotR ME Mail Bot",
         avatar_url: AVATAR_URL,
-        content: `📧 New E-Mail from **${from}**:\n**${subject}**\n\n${body.substring(0, 1000)}`,
-        footer: {
-          text: FOOTER_TEXT
-        }
+        content: `📧 New E-Mail from "${from}":\n# "${subject}"\n\n"${body}"`,
+        embeds: [],
+        thread_name: `"${subject}"`
       };
 
     return postToDiscord(WEBHOOKS.mails, payload);
