@@ -62,6 +62,19 @@ async function handleDiscussion(discussion) {
                 timestamp: new Date().toISOString(),
                 footer: { text: FOOTER_TEXT }  // Using footer text from config.js
             }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "View on GitHub",
+                        url: discussion.html_url
+                    }
+                ]
+            }
         ]
     };
 
@@ -95,6 +108,25 @@ async function handleRelease(release) {
                     { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)`, inline: true }
                 ],
                 footer: { text: FOOTER_TEXT }  // Using footer text from config.js
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "Changelog Channel",
+                        url: "https://discord.com/channels/1237739289689985138/1241277621766197268"
+                    },
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "GitHub Release",
+                        url: release.html_url
+                    }
+                ]
             }
         ]
     };
