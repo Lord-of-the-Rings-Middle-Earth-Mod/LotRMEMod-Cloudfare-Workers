@@ -182,8 +182,9 @@ function decodeHTMLEntities(text) {
  * @param {Object} entry - RSS entry object
  */
 async function sendEntryToDiscord(entry) {
-  // Clean up HTML content for description
-  const cleanContent = stripHtml(entry.content).substring(0, 2000); // Limit length
+  // Clean up HTML content for message content
+  // Discord message content limit is 2000 chars, accounting for role ping and newlines
+  const cleanContent = stripHtml(entry.content).substring(0, 1950); // Limit length for role ping + newlines
   
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
@@ -193,7 +194,7 @@ async function sendEntryToDiscord(entry) {
   
   // Format the Discord payload according to specification
   const payload = {
-    content: "<@&1371820347543916554>", // Role ping as specified
+    content: `<@&1371820347543916554>\n\n${cleanContent}`, // Role ping followed by content
     embeds: [
       {
         footer: {
@@ -201,7 +202,6 @@ async function sendEntryToDiscord(entry) {
         },
         title: entry.title,
         url: entryUrl,
-        description: cleanContent,
         timestamp: entry.published
       }
     ],
@@ -214,6 +214,12 @@ async function sendEntryToDiscord(entry) {
             style: 5,
             label: "Original Post",
             url: entryUrl
+          },
+          {
+            type: 2,
+            style: 5,
+            url: "https://fabricmc.net/blog/",
+            label: "Fabric Feed"
           }
         ]
       }
