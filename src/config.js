@@ -1,8 +1,8 @@
 // The configuration file for storing constants and settings
 export const WEBHOOKS = {
-  news: "https://discord.com/api/webhooks/1344295085797277728/IkpbMIPwm68YxjD0xG1fSUheYeAQUsa1PuiBjebiOaSvAAiJvYMXeW3aTi6QaB0w4gKg",
-  changelog: "https://discord.com/api/webhooks/1301097428606517268/Z6R6lt5g2hKpUZMaBT7ro-o3d9-YZdpPrkbDzux6ubw8H227ykoCXwO19F-wlIus-b5-",
-  suggestions: "https://discord.com/api/webhooks/1301226095584084059/_VRnk4v15GjEa_poXiWI27gTk00_3NB2AQxhheCtYE191RivFNxWsjJNEZXEkIdY-qz2",
+  news: "https://discord.com/api/webhooks/1398984325768155248/ARPRRmDJ6VMHya_Hr905A_KYapB5yPql_SIcbHW_hUdjFD8JN-lhMWmht6E-BsyS6Gbe",
+  changelog: "https://discord.com/api/webhooks/1398983765501411399/kSwIBtN9n9s1OOTpm2ipTZwvJS4eDXXaTlmiTOR3Sbw8GRkVt0YLc7gFRRai106MZ5z_",
+  suggestions: "https://discord.com/api/webhooks/1398984631885369424/c2kqCGW3ah-ZO9RT_ibTRS6XK4iIRegoFuwFBJ8HI8MugU7IkS0YE3t1xDCGUJdyZjpD",
   fabricblog: "https://discord.com/api/webhooks/1397515608471502870/mGJhFZZdkZunUd9PUoH0aa2uEsUC8i4RJeLd0tkiNO0H5LsCNd7pDMlBlyoh1BKzIFk2",
   mails: "https://discord.com/api/webhooks/1398966958048804875/d6VJgJGN4chwh75esIIpD6xgaDauq0-CVyuHDJ6k3sxz0KZEgNbgdWbV3Xv4Y8mmlGPQ"
 };

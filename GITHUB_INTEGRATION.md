@@ -9,6 +9,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
 - **Release Management**: Automatically posts release announcements to news and changelog channels
 - **Role Pinging**: Automatically pings relevant roles based on content and labels
 - **Thread Support**: Creates threads for suggestions to organize discussions
+- **Interactive Buttons**: Adds clickable buttons to messages for quick navigation to GitHub and Discord channels
 
 ## Configuration
 
@@ -37,12 +38,14 @@ This module implements automatic GitHub webhook processing and Discord integrati
   - Special handling for "Monthly Updates" label (uses monthly role ping)
   - Username: "GitHub Announcements"
   - Title prefix: "GitHub Announcement"
+  - Includes "View on GitHub" button linking to the original discussion
 
 - **Ideas and Suggestions Category**:
   - Routes to suggestions channel
   - Creates Discord thread for organization
   - Username: "GitHub Suggestions" 
   - Title prefix: "GitHub Suggestion"
+  - Includes "View on GitHub" button linking to the original discussion
 
 ### Releases
 - **Dual Channel Posting**:
@@ -50,6 +53,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
   - **Changelog Channel**: Full release notes and detailed information
 - **Role Ping**: Uses release role ping for notifications
 - **Links**: Provides both GitHub release and changelog links
+- **Interactive Buttons**: News channel includes buttons for quick access to changelog Discord channel and GitHub release
 
 ## Message Format
 
@@ -65,6 +69,15 @@ This module implements automatic GitHub webhook processing and Discord integrati
     "color": 1190012,
     "timestamp": "ISO Date",
     "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "View on GitHub",
+      "url": "{discussion.html_url}"
+    }]
   }],
   "thread_name": "{title}" // Only for suggestions
 }
@@ -88,6 +101,23 @@ This module implements automatic GitHub webhook processing and Discord integrati
       { "name": "Changelog", "value": "[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)", "inline": true }
     ],
     "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [
+      {
+        "type": 2,
+        "style": 5,
+        "label": "Changelog Channel",
+        "url": "https://discord.com/channels/1237739289689985138/1241277621766197268"
+      },
+      {
+        "type": 2,
+        "style": 5,
+        "label": "GitHub Release",
+        "url": "{release.html_url}"
+      }
+    ]
   }]
 }
 ```
