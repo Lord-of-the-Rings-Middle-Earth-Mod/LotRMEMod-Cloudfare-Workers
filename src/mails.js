@@ -12,9 +12,9 @@ export async function handleMails(request, env) {
     const payload = {
         username: "LotR ME Mail Bot",
         avatar_url: AVATAR_URL,
-        content: `📧 New E-Mail from "${from}":\n# "${subject}"\n\n"${body}"`,
+        content: `📧 New E-Mail from *${from}*:\n# ${subject}\n\n${body}`,
         embeds: [],
-        thread_name: `"${subject}"`
+        thread_name: `${subject}`
       };
 
     return postToDiscord(WEBHOOKS.mails, payload);
