@@ -33,12 +33,11 @@ Each RSS entry is formatted as a Discord message with:
 
 ```json
 {
-  "content": "<@&1371820347543916554>",
+  "content": "<@&1371820347543916554>\n\nCleaned HTML Content",
   "embeds": [{
     "footer": { "text": "The original Post was made on the Fabric RSS-Feed" },
     "title": "Entry Title",
     "url": "Entry Link",
-    "description": "Cleaned HTML Content",
     "timestamp": "ISO Date"
   }],
   "components": [{
@@ -48,6 +47,11 @@ Each RSS entry is formatted as a Discord message with:
       "style": 5,
       "label": "Original Post",
       "url": "Entry Link"
+    }, {
+      "type": 2,
+      "style": 5,
+      "url": "https://fabricmc.net/blog/",
+      "label": "Fabric Feed"
     }]
   }],
   "username": "Fabric RSS Bot",
