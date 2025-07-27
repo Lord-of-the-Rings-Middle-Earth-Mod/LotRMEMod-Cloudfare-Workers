@@ -4,7 +4,7 @@ export const WEBHOOKS = {
   changelog: "https://discord.com/api/webhooks/1301097428606517268/Z6R6lt5g2hKpUZMaBT7ro-o3d9-YZdpPrkbDzux6ubw8H227ykoCXwO19F-wlIus-b5-",
   suggestions: "https://discord.com/api/webhooks/1301226095584084059/_VRnk4v15GjEa_poXiWI27gTk00_3NB2AQxhheCtYE191RivFNxWsjJNEZXEkIdY-qz2",
   fabricblog: "https://discord.com/api/webhooks/1397515608471502870/mGJhFZZdkZunUd9PUoH0aa2uEsUC8i4RJeLd0tkiNO0H5LsCNd7pDMlBlyoh1BKzIFk2",
-  mails: "https://discord.com/api/webhooks/1376881118363783179/Z861kL7YymjgnE5ohlbx2fpy4zS94XNaiB8Yzw88qjNB7JBBU_Rcwsp10krcihIwB_Wc"
+  mails: "https://discord.com/api/webhooks/1398966958048804875/d6VJgJGN4chwh75esIIpD6xgaDauq0-CVyuHDJ6k3sxz0KZEgNbgdWbV3Xv4Y8mmlGPQ"
 };
 
 export const PINGS = {

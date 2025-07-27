@@ -49,10 +49,22 @@ Discord messages are formatted as follows:
 {
   "username": "LotR ME Mail Bot",
   "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
-  "content": "📧 New E-Mail from **{sender}**:\n**{subject}**\n\n{body_truncated}",
-  "footer": {
-    "text": "This post originates from GitHub."
-  }
+  "content": "📧 New E-Mail from \"{sender}\":\n# \"{subject}\"\n\n\"{body}\"",
+  "embeds": [],
+  "components": [
+    {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "style": 5,
+          "label": "Answer",
+          "url": "mailto:{sender}"
+        }
+      ]
+    }
+  ],
+  "thread_name": "\"{subject}\""
 }
 ```
 
@@ -61,8 +73,9 @@ Discord messages are formatted as follows:
 - **Sender**: Extracted from `envelope.from` or defaults to "Unknown sender"
 - **Subject**: Extracted from `headers.subject` or defaults to "No Subject"  
 - **Body**: Uses `plain` content first, falls back to `html`, or "No content"
-- **Truncation**: Body content limited to 1000 characters to fit Discord limits
-- **Formatting**: Email indicator emoji (📧) and bold formatting for sender/subject
+- **Formatting**: Email indicator emoji (📧) and markdown header formatting for subject
+- **Components**: Includes "Answer" button with mailto link to sender
+- **Threading**: Creates forum thread with email subject as thread name
 
 ## Error Handling
 
