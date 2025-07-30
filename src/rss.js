@@ -182,9 +182,9 @@ function decodeHTMLEntities(text) {
  * @param {Object} entry - RSS entry object
  */
 async function sendEntryToDiscord(entry) {
-  // Clean up HTML content for message content
+  // Convert HTML content to Markdown for message content
   // Discord message content limit is 2000 chars, accounting for role ping and newlines
-  const cleanContent = stripHtml(entry.content).substring(0, 1950); // Limit length for role ping + newlines
+  const cleanContent = htmlToMarkdown(entry.content).substring(0, 1950); // Limit length for role ping + newlines
   
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
@@ -233,25 +233,101 @@ async function sendEntryToDiscord(entry) {
 }
 
 /**
- * Strips HTML tags from content for use in Discord
+ * Converts HTML content to Markdown format for Discord
  * @param {string} html - HTML content
- * @returns {string} - Plain text content
+ * @returns {string} - Markdown formatted content
  */
-function stripHtml(html) {
+function htmlToMarkdown(html) {
   if (!html) return '';
   
-  // Simple HTML tag removal - replace with plain text equivalents
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n\n')
-    .replace(/<[^>]*>/g, '')
+  let markdown = html;
+  
+  // Convert headings to markdown headers
+  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n\n');
+  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n\n');
+  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n\n');
+  markdown = markdown.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n#### $1\n\n');
+  markdown = markdown.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '\n##### $1\n\n');
+  markdown = markdown.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '\n###### $1\n\n');
+  
+  // Convert strong/bold tags to markdown bold
+  markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+  markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+  
+  // Convert code tags to markdown code
+  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+  
+  // Convert blockquotes to markdown blockquotes
+  markdown = markdown.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, (match, content) => {
+    // Clean the content first by removing HTML tags, then format as blockquote
+    const cleanContent = content.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1').replace(/<[^>]*>/g, '').trim();
+    return '\n> ' + cleanContent.split('\n').map(line => line.trim()).filter(line => line).join('\n> ') + '\n\n';
+  });
+  
+  // Convert unordered lists to markdown lists
+  markdown = markdown.replace(/<ul[^>]*>(.*?)<\/ul>/gi, (match, listContent) => {
+    // Extract list items and convert to markdown
+    const listItems = listContent.match(/<li[^>]*>(.*?)<\/li>/gi) || [];
+    const markdownItems = listItems.map(item => {
+      // First process any nested HTML in the list item content
+      let content = item.replace(/<li[^>]*>(.*?)<\/li>/gi, '$1');
+      // Convert strong/bold in list items
+      content = content.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      content = content.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+      // Convert code in list items
+      content = content.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+      // Remove any remaining HTML tags
+      content = content.replace(/<[^>]*>/g, '').trim();
+      return `- ${content}`;
+    });
+    return '\n' + markdownItems.join('\n') + '\n\n';
+  });
+  
+  // Convert ordered lists to markdown lists
+  markdown = markdown.replace(/<ol[^>]*>(.*?)<\/ol>/gi, (match, listContent) => {
+    // Extract list items and convert to markdown
+    const listItems = listContent.match(/<li[^>]*>(.*?)<\/li>/gi) || [];
+    const markdownItems = listItems.map((item, index) => {
+      // First process any nested HTML in the list item content
+      let content = item.replace(/<li[^>]*>(.*?)<\/li>/gi, '$1');
+      // Convert strong/bold in list items
+      content = content.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      content = content.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+      // Convert code in list items
+      content = content.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+      // Remove any remaining HTML tags
+      content = content.replace(/<[^>]*>/g, '').trim();
+      return `${index + 1}. ${content}`;
+    });
+    return '\n' + markdownItems.join('\n') + '\n\n';
+  });
+  
+  // Convert paragraphs - add line breaks
+  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '\n$1\n\n');
+  
+  // Convert line breaks
+  markdown = markdown.replace(/<br\s*\/?>/gi, '\n');
+  
+  // Convert div endings to line breaks
+  markdown = markdown.replace(/<\/div>/gi, '\n');
+  
+  // Remove any remaining HTML tags
+  markdown = markdown.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  markdown = markdown
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/&apos;/g, "'");
+  
+  // Clean up excessive whitespace and line breaks
+  markdown = markdown
+    .replace(/\n\s*\n\s*\n/g, '\n\n') // Replace multiple line breaks with double line breaks
+    .replace(/^\s+|\s+$/g, '') // Trim start and end
+    .replace(/[ \t]+/g, ' '); // Replace multiple spaces with single space
+  
+  return markdown;
 }
