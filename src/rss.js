@@ -354,9 +354,6 @@ async function sendEntryToDiscord(entry) {
         } else {
           console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
         }
-        
-        // Add a small delay between messages to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
     } catch (error) {
