@@ -27,8 +27,24 @@ export async function postToDiscord(webhookUrl, payload) {
         }
         
         console.log('Discord message posted successfully');
-        // If the request was successful, return a success response
-        return new Response("Success", { status: 200 });
+        
+        // Get the response data to extract thread information if needed
+        let responseData = null;
+        try {
+            responseData = await response.json();
+            console.log('Discord API response data:', JSON.stringify(responseData, null, 2));
+        } catch (e) {
+            console.log('No JSON response data available');
+        }
+        
+        // Return success response with Discord API data
+        return new Response(JSON.stringify({ 
+            success: true, 
+            discordResponse: responseData 
+        }), { 
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
         
     } catch (error) {
         console.error('Error posting to Discord:', error);
