@@ -4,8 +4,8 @@ import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; //
 export async function handleGitHubWebhook(request) {
     const data = await request.json();
 
-    // We ignore actions that are neither 'created' nor 'published'.
-    if (data.action !== "created" && data.action !== "published") {
+    // We ignore actions that are not 'created', 'published', or 'opened'.
+    if (data.action !== "created" && data.action !== "published" && data.action !== "opened") {
         return new Response("Ignored", { status: 200 });
     }
 
@@ -16,6 +16,10 @@ export async function handleGitHubWebhook(request) {
     // If it's a release, handle it
     else if (data.release && data.action == "published") {
         return handleRelease(data.release);
+    }
+    // If it's an issue, handle it
+    else if (data.issue && data.action == "opened") {
+        return handleIssue(data.issue);
     }
 
     return new Response("Ignored", { status: 200 });
@@ -156,4 +160,53 @@ async function handleRelease(release) {
         console.error(`Failed to send release messages. News: ${newsResponse.status}, Changelog: ${changelogResponse.status}`);
         return new Response("Partial failure", { status: 500 });
     }
+}
+
+// Function to handle GitHub Issues
+async function handleIssue(issue) {
+    // Format labels - convert array to string
+    let labelsText = "None";
+    if (issue.labels && issue.labels.length > 0) {
+        labelsText = issue.labels.map(label => label.name).join(", ");
+    }
+
+    // Create the Discord payload with the issue details
+    const payload = {
+        username: "LotR ME Mod Issues",
+        avatar_url: AVATAR_URL,
+        embeds: [
+            {
+                title: issue.title,
+                author: {
+                    name: issue.user.login
+                },
+                description: issue.body || "No description provided",
+                fields: [
+                    {
+                        name: "Labels",
+                        value: labelsText
+                    }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: {
+                    text: "This issue was created on GitHub"
+                }
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "Issue on GitHub",
+                        url: issue.html_url
+                    }
+                ]
+            }
+        ]
+    };
+
+    return postToDiscord(WEBHOOKS.issues, payload);
 }
