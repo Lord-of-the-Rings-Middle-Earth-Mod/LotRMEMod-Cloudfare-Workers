@@ -51,7 +51,8 @@ Discord messages are formatted as follows:
   "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
   "content": "📧 New E-Mail from \"{sender}\":\n# \"{subject}\"\n\n\"{body}\"",
   "embeds": [],
-  "thread_name": "\"{subject}\""
+  "thread_name": "\"{subject}\"",
+  "applied_tags": ["1398967786860183724"]
 }
 ```
 
@@ -62,6 +63,7 @@ Discord messages are formatted as follows:
 - **Body**: Uses `plain` content first, falls back to `html`, or "No content"
 - **Formatting**: Email indicator emoji (📧) and markdown header formatting for subject
 - **Threading**: Creates forum thread with email subject as thread name
+- **Tagging**: Automatically applies "Unread" tag (ID: 1398967786860183724) to all mail posts
 
 ## Error Handling
 
