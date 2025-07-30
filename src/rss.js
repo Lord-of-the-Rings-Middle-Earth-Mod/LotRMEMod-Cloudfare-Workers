@@ -178,13 +178,96 @@ function decodeHTMLEntities(text) {
 }
 
 /**
- * Sends an RSS entry to Discord using the specified format
+ * Splits content into chunks that fit within Discord's message limits
+ * @param {string} content - Content to split
+ * @param {number} maxLength - Maximum length per chunk (default: 1950 to account for role ping)
+ * @returns {Array<string>} - Array of content chunks
+ */
+function splitContentIntoChunks(content, maxLength = 1950) {
+  if (!content || content.length <= maxLength) {
+    return [content || ''];
+  }
+  
+  const chunks = [];
+  let currentChunk = '';
+  
+  // Split by paragraphs first (double newlines)
+  const paragraphs = content.split('\n\n');
+  
+  for (const paragraph of paragraphs) {
+    // If adding this paragraph would exceed the limit
+    if (currentChunk.length + paragraph.length + 2 > maxLength) {
+      // If current chunk has content, add it to chunks
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+      
+      // If the paragraph itself is too long, split it by sentences
+      if (paragraph.length > maxLength) {
+        const sentences = paragraph.split(/(?<=[.!?])\s+/);
+        for (const sentence of sentences) {
+          if (currentChunk.length + sentence.length + 1 > maxLength) {
+            if (currentChunk.trim()) {
+              chunks.push(currentChunk.trim());
+              currentChunk = '';
+            }
+            
+            // If even a sentence is too long, split by words
+            if (sentence.length > maxLength) {
+              const words = sentence.split(' ');
+              for (const word of words) {
+                if (currentChunk.length + word.length + 1 > maxLength) {
+                  if (currentChunk.trim()) {
+                    chunks.push(currentChunk.trim());
+                    currentChunk = word;
+                  } else {
+                    // Word itself is too long, forcibly split it
+                    if (word.length > maxLength) {
+                      for (let i = 0; i < word.length; i += maxLength) {
+                        chunks.push(word.slice(i, i + maxLength));
+                      }
+                    } else {
+                      currentChunk = word;
+                    }
+                  }
+                } else {
+                  currentChunk += (currentChunk ? ' ' : '') + word;
+                }
+              }
+            } else {
+              currentChunk = sentence;
+            }
+          } else {
+            currentChunk += (currentChunk ? ' ' : '') + sentence;
+          }
+        }
+      } else {
+        currentChunk = paragraph;
+      }
+    } else {
+      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+    }
+  }
+  
+  // Add any remaining content
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  return chunks.length > 0 ? chunks : [''];
+}
+
+/**
+ * Sends an RSS entry to Discord using the specified format, handling multi-message posts
  * @param {Object} entry - RSS entry object
  */
 async function sendEntryToDiscord(entry) {
   // Convert HTML content to Markdown for message content
-  // Discord message content limit is 2000 chars, accounting for role ping and newlines
-  const cleanContent = htmlToMarkdown(entry.content).substring(0, 1950); // Limit length for role ping + newlines
+  const fullContent = htmlToMarkdown(entry.content);
+  
+  // Split content into chunks that fit within Discord's limits
+  const contentChunks = splitContentIntoChunks(fullContent, 1950); // 1950 to account for role ping + newlines
   
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
@@ -192,9 +275,9 @@ async function sendEntryToDiscord(entry) {
     console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
   }
   
-  // Format the Discord payload according to specification
-  const payload = {
-    content: `<@&1371820347543916554>\n\n${cleanContent}`, // Role ping followed by content
+  // Send the first message to create the forum thread
+  const firstPayload = {
+    content: `<@&1371820347543916554>\n\n${contentChunks[0]}`, // Role ping followed by first chunk
     embeds: [
       {
         footer: {
@@ -229,7 +312,57 @@ async function sendEntryToDiscord(entry) {
     avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
   };
   
-  return postToDiscord(WEBHOOKS.fabricblog, payload);
+  // Send the first message
+  const firstResponse = await postToDiscord(WEBHOOKS.fabricblog, firstPayload);
+  
+  if (firstResponse.status !== 200) {
+    console.error(`Failed to send first message for entry: ${entry.title}`);
+    return firstResponse;
+  }
+  
+  // If there are additional content chunks, send them as follow-up messages
+  if (contentChunks.length > 1) {
+    try {
+      // Extract the thread ID from the Discord response
+      const responseData = await firstResponse.json();
+      const threadId = responseData.discordResponse?.channel_id;
+      
+      if (!threadId) {
+        console.error(`Could not extract thread ID from Discord response for entry: ${entry.title}`);
+        console.log('Response data:', JSON.stringify(responseData, null, 2));
+        return firstResponse; // Return success for first message even if follow-ups fail
+      }
+      
+      console.log(`Sending ${contentChunks.length - 1} follow-up messages to thread ${threadId}`);
+      
+      // Create webhook URL with thread_id parameter
+      const threadWebhookUrl = `${WEBHOOKS.fabricblog}?thread_id=${threadId}`;
+      
+      // Send follow-up messages
+      for (let i = 1; i < contentChunks.length; i++) {
+        const followUpPayload = {
+          content: contentChunks[i],
+          username: "Fabric RSS Bot",
+          avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
+        };
+        
+        const followUpResponse = await postToDiscord(threadWebhookUrl, followUpPayload);
+        
+        if (followUpResponse.status !== 200) {
+          console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
+          // Continue with other follow-up messages even if one fails
+        } else {
+          console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error(`Error processing follow-up messages for entry ${entry.title}:`, error);
+      // Return success for first message even if follow-ups fail
+    }
+  }
+  
+  return firstResponse;
 }
 
 /**

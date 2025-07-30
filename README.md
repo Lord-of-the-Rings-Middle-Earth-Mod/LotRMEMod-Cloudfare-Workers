@@ -7,9 +7,9 @@ This repository contains a Cloudflare Worker that provides multiple Discord inte
 The worker provides the following major functionalities:
 
 - **[GitHub Integration](GITHUB_INTEGRATION.md)** - Automatically posts GitHub discussions and releases to Discord
-- **[RSS Integration](RSS_INTEGRATION.md)** - Monitors Fabric MC blog RSS feed and posts updates to Discord  
+- **[RSS Integration](RSS_INTEGRATION.md)** - Monitors Fabric MC blog RSS feed and posts complete content to Discord using multi-message threads  
 - **[Mail Integration](MAIL_INTEGRATION.md)** - Forwards emails to Discord channels
-- **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality used by all modules
+- **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality with multi-message thread support used by all modules
 - **[KV Storage](KV_STORAGE.md)** - Utilities for persistent data storage
 
 ## Architecture
@@ -127,9 +127,9 @@ Each integration can be tested individually:
 Detailed documentation is available for each module:
 
 - **[GitHub Integration](GITHUB_INTEGRATION.md)** - GitHub webhook processing and Discord posting
-- **[RSS Integration](RSS_INTEGRATION.md)** - Fabric MC blog monitoring and posting
+- **[RSS Integration](RSS_INTEGRATION.md)** - Fabric MC blog monitoring with multi-message posting
 - **[Mail Integration](MAIL_INTEGRATION.md)** - Email forwarding to Discord
-- **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality  
+- **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting with thread support  
 - **[KV Storage](KV_STORAGE.md)** - Persistent storage utilities
 
 ## Contributing

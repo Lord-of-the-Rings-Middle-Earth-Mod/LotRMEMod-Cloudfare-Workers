@@ -145,8 +145,14 @@ async function handleRelease(release) {
     };
 
     // Send the messages to Discord
-    await postToDiscord(WEBHOOKS.news, newsMessage);
-    await postToDiscord(WEBHOOKS.changelog, changelogMessage);
+    const newsResponse = await postToDiscord(WEBHOOKS.news, newsMessage);
+    const changelogResponse = await postToDiscord(WEBHOOKS.changelog, changelogMessage);
 
-    return new Response("Success", { status: 200 });
+    // Check if both messages were sent successfully
+    if (newsResponse.status === 200 && changelogResponse.status === 200) {
+        return new Response("Success", { status: 200 });
+    } else {
+        console.error(`Failed to send release messages. News: ${newsResponse.status}, Changelog: ${changelogResponse.status}`);
+        return new Response("Partial failure", { status: 500 });
+    }
 }
