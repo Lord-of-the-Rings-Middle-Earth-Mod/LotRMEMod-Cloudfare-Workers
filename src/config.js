@@ -14,6 +14,11 @@ export const PINGS = {
   fabricupdates: "<@&1371820347543916554>"
 };
 
+// Discord tags for specific post types
+export const TAGS = {
+  suggestions: "1283842398308532256"
+};
+
 // Avatar URL to use in Discord messages
 export const AVATAR_URL = "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256";
 
