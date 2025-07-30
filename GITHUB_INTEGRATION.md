@@ -18,6 +18,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
   - `WEBHOOKS.news` for announcements and releases
   - `WEBHOOKS.suggestions` for ideas and suggestions  
   - `WEBHOOKS.changelog` for detailed release notes
+  - `WEBHOOKS.issues` for new GitHub issues
 - **Role Pings**: Configured in `config.js` as `PINGS` object
 - **Avatar**: Uses `AVATAR_URL` from config for consistent branding
 
@@ -29,8 +30,18 @@ This module implements automatic GitHub webhook processing and Discord integrati
 - **Supported Events**: 
   - Discussion created (announcements, suggestions)
   - Release published
+  - Issue opened
 
 ## Supported GitHub Events
+
+### Issues
+- **New Issues**:
+  - Routes to issues channel with issue details
+  - Username: "LotR ME Mod Issues"
+  - Includes issue title, author, description, and labels
+  - Includes "Issue on GitHub" button linking to the original issue
+  - Handles issues with or without labels and descriptions
+  - Only processes "opened" action events
 
 ### Discussions
 - **Announcements Category**: 
@@ -56,6 +67,36 @@ This module implements automatic GitHub webhook processing and Discord integrati
 - **Interactive Buttons**: News channel includes buttons for quick access to changelog Discord channel and GitHub release
 
 ## Message Format
+
+### Issue Messages
+```json
+{
+  "username": "LotR ME Mod Issues",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "embeds": [{
+    "title": "{issue.title}",
+    "author": {
+      "name": "{issue.user.login}"
+    },
+    "description": "{issue.body}",
+    "fields": [{
+      "name": "Labels",
+      "value": "{comma-separated labels or 'None'}"
+    }],
+    "timestamp": "ISO Date",
+    "footer": { "text": "This issue was created on GitHub" }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "Issue on GitHub",
+      "url": "{issue.html_url}"
+    }]
+  }]
+}
+```
 
 ### Discussion Messages
 ```json
@@ -149,10 +190,11 @@ This module implements automatic GitHub webhook processing and Discord integrati
 To test the GitHub integration:
 
 1. **GitHub Webhook**: Configure webhook in repository settings to point to `/github` endpoint
-2. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
-3. **Release Test**: Publish a new release in the repository
-4. **Check Logs**: Monitor Cloudflare Worker logs for processing status
-5. **Verify Discord**: Check the configured Discord channels for new messages
+2. **Issue Test**: Create a new issue in the repository
+3. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
+4. **Release Test**: Publish a new release in the repository
+5. **Check Logs**: Monitor Cloudflare Worker logs for processing status
+6. **Verify Discord**: Check the configured Discord channels for new messages
 
 ## Files Modified
 
