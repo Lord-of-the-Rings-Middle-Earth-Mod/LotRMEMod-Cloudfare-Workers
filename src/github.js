@@ -1,5 +1,5 @@
 import { postToDiscord } from './discord.js'; // For sending messages to Discord
-import { WEBHOOKS, PINGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; // The Webhook URLs, Pings, Avatar, and Footer Text
+import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
 
 export async function handleGitHubWebhook(request) {
     const data = await request.json();
@@ -78,9 +78,10 @@ async function handleDiscussion(discussion) {
         ]
     };
 
-    // If it's a thread, set the thread name
+    // If it's a thread, set the thread name and apply tags
     if (useThread) {
         payload.thread_name = `${titlePrefix}: ${discussion.title}`;
+        payload.applied_tags = [TAGS.suggestions];
     }
 
     return postToDiscord(webhookUrl, payload);
