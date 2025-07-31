@@ -267,7 +267,7 @@ async function sendEntryToDiscord(entry) {
   const fullContent = htmlToMarkdown(entry.content);
   
   // Split content into chunks that fit within Discord's limits
-  const contentChunks = splitContentIntoChunks(fullContent, 1950); // 1950 to account for role ping + newlines
+  const contentChunks = splitContentIntoChunks(fullContent, 1900); // Reduced to 1900 to account for role ping + title + padding
   
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
@@ -275,9 +275,57 @@ async function sendEntryToDiscord(entry) {
     console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
   }
   
-  // Send the first message to create the forum thread
+  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
+  
+  // If content fits in a single message, send it normally with forum thread creation
+  if (contentChunks.length === 1) {
+    const singlePayload = {
+      content: `<@&1371820347543916554>\n\n${contentChunks[0]}`, // Role ping followed by content
+      embeds: [
+        {
+          footer: {
+            text: "The original Post was made on the Fabric RSS-Feed"
+          },
+          title: entry.title,
+          url: entryUrl,
+          timestamp: entry.published
+        }
+      ],
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 5,
+              label: "Original Post",
+              url: entryUrl
+            },
+            {
+              type: 2,
+              style: 5,
+              url: "https://fabricmc.net/blog/",
+              label: "Fabric Feed"
+            }
+          ]
+        }
+      ],
+      username: "Fabric RSS Bot",
+      thread_name: entry.title,
+      avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
+    };
+    
+    return await postToDiscord(WEBHOOKS.fabricblog, singlePayload);
+  }
+  
+  // For multi-chunk content, we need a different approach since Discord forum webhooks
+  // with thread_name don't return thread information for follow-up messages
+  console.log(`Multi-chunk content detected for "${entry.title}". Using alternative approach.`);
+  
+  // Option 1: Send first message without thread_name to get a regular channel message
+  // then use thread creation in the response to send follow-ups
   const firstPayload = {
-    content: `<@&1371820347543916554>\n\n${contentChunks[0]}`, // Role ping followed by first chunk
+    content: `<@&1371820347543916554>\n\n**${entry.title}**\n\n${contentChunks[0]}`,
     embeds: [
       {
         footer: {
@@ -308,11 +356,10 @@ async function sendEntryToDiscord(entry) {
       }
     ],
     username: "Fabric RSS Bot",
-    thread_name: entry.title,
     avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
   };
   
-  // Send the first message
+  // Send the first message to a regular channel (no thread_name for multi-part messages)
   const firstResponse = await postToDiscord(WEBHOOKS.fabricblog, firstPayload);
   
   if (firstResponse.status !== 200) {
@@ -320,45 +367,33 @@ async function sendEntryToDiscord(entry) {
     return firstResponse;
   }
   
-  // If there are additional content chunks, send them as follow-up messages
-  if (contentChunks.length > 1) {
+  // For multi-chunk content, send follow-up messages immediately after the first one
+  // This will post them in the same channel in sequence
+  console.log(`Sending ${contentChunks.length - 1} follow-up messages for entry: ${entry.title}`);
+  
+  for (let i = 1; i < contentChunks.length; i++) {
     try {
-      // Extract the thread ID from the Discord response
-      const responseData = await firstResponse.json();
-      const threadId = responseData.discordResponse?.channel_id;
+      const followUpPayload = {
+        content: `**${entry.title} (continued ${i}/${contentChunks.length - 1})**\n\n${contentChunks[i]}`,
+        username: "Fabric RSS Bot",
+        avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
+      };
       
-      if (!threadId) {
-        console.error(`Could not extract thread ID from Discord response for entry: ${entry.title}`);
-        console.log('Response data:', JSON.stringify(responseData, null, 2));
-        return firstResponse; // Return success for first message even if follow-ups fail
+      const followUpResponse = await postToDiscord(WEBHOOKS.fabricblog, followUpPayload);
+      
+      if (followUpResponse.status !== 200) {
+        console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
+        // Continue with other follow-up messages even if one fails
+      } else {
+        console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
       }
       
-      console.log(`Sending ${contentChunks.length - 1} follow-up messages to thread ${threadId}`);
-      
-      // Create webhook URL with thread_id parameter
-      const threadWebhookUrl = `${WEBHOOKS.fabricblog}?thread_id=${threadId}`;
-      
-      // Send follow-up messages
-      for (let i = 1; i < contentChunks.length; i++) {
-        const followUpPayload = {
-          content: contentChunks[i],
-          username: "Fabric RSS Bot",
-          avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
-        };
-        
-        const followUpResponse = await postToDiscord(threadWebhookUrl, followUpPayload);
-        
-        if (followUpResponse.status !== 200) {
-          console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
-          // Continue with other follow-up messages even if one fails
-        } else {
-          console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
-        }
-      }
+      // Add a small delay between messages to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
       
     } catch (error) {
-      console.error(`Error processing follow-up messages for entry ${entry.title}:`, error);
-      // Return success for first message even if follow-ups fail
+      console.error(`Error sending follow-up message ${i} for entry ${entry.title}:`, error);
+      // Continue with other follow-up messages even if one fails
     }
   }
   

@@ -40,7 +40,8 @@ export async function postToDiscord(webhookUrl, payload) {
         // Return success response with Discord API data
         return new Response(JSON.stringify({ 
             success: true, 
-            discordResponse: responseData 
+            discordResponse: responseData,
+            status: response.status
         }), { 
             status: 200,
             headers: { 'Content-Type': 'application/json' }
