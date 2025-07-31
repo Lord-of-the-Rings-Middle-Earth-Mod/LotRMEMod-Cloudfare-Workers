@@ -277,21 +277,21 @@ async function sendEntryToDiscord(entry) {
 
   console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
   
-  // Send the first message with full metadata and title as heading
+  // Send the first message with title as heading and content
   const firstPayload = {
     content: `<@&1371820347543916554>\n\n# ${entry.title}\n\n${contentChunks[0]}${contentChunks.length > 1 ? '' : '\n\n---'}`,
-    embeds: [
-      {
-        footer: {
-          text: "The original Post was made on the Fabric RSS-Feed"
-        },
-        title: entry.title,
-        url: entryUrl,
-        timestamp: entry.published
-      }
-    ],
-    // Only add buttons if this is a single message (no follow-ups)
+    // Only add embed and buttons if this is a single message (no follow-ups)
     ...(contentChunks.length === 1 && {
+      embeds: [
+        {
+          footer: {
+            text: "The original Post was made on the Fabric RSS-Feed"
+          },
+          title: entry.title,
+          url: entryUrl,
+          timestamp: entry.published
+        }
+      ],
       components: [
         {
           type: 1,
@@ -332,8 +332,18 @@ async function sendEntryToDiscord(entry) {
         content: `**${entry.title} (continued ${i}/${contentChunks.length - 1})**\n\n${contentChunks[i]}${isLastMessage ? '\n\n---' : ''}`,
         username: "Fabric RSS Bot",
         avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
-        // Only add buttons to the last message
+        // Add embed and buttons to the last message
         ...(isLastMessage && {
+          embeds: [
+            {
+              footer: {
+                text: "The original Post was made on the Fabric RSS-Feed"
+              },
+              title: entry.title,
+              url: entryUrl,
+              timestamp: entry.published
+            }
+          ],
           components: [
             {
               type: 1,
