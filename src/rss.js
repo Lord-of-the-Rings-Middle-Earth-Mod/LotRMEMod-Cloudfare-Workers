@@ -259,42 +259,39 @@ function splitContentIntoChunks(content, maxLength = 1950) {
 }
 
 /**
- * Sends an RSS entry to Discord using the specified format, handling multi-message posts
+ * Sends an RSS entry to Discord using regular channel multi-message approach
  * @param {Object} entry - RSS entry object
  */
 async function sendEntryToDiscord(entry) {
   // Convert HTML content to Markdown for message content
   const fullContent = htmlToMarkdown(entry.content);
   
+  // Split content into chunks that fit within Discord's limits
+  const contentChunks = splitContentIntoChunks(fullContent, 1900); // 1900 to account for role ping + title + padding
+  
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
   if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
     console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
   }
+
+  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
   
-  // Calculate actual overhead: role ping (25) + newlines (2) = 27 chars
-  // Discord limit is 2000, so we can use up to 1973 chars for content
-  // Use 1970 to be safe
-  const rolePin = `<@&1371820347543916554>\n\n`;
-  const maxContentLength = 2000 - rolePin.length - 10; // 10 chars buffer for safety
-  
-  // Try to fit content in a single message to preserve forum thread functionality
-  if (fullContent.length <= maxContentLength) {
-    console.log(`Entry "${entry.title}" fits in single message (${fullContent.length} chars)`);
-    
-    // Send as single message with forum thread creation
-    const singlePayload = {
-      content: `${rolePin}${fullContent}`,
-      embeds: [
-        {
-          footer: {
-            text: "The original Post was made on the Fabric RSS-Feed"
-          },
-          title: entry.title,
-          url: entryUrl,
-          timestamp: entry.published
-        }
-      ],
+  // Send the first message with full metadata and title as heading
+  const firstPayload = {
+    content: `<@&1371820347543916554>\n\n# ${entry.title}\n\n${contentChunks[0]}${contentChunks.length > 1 ? '' : '\n\n---'}`,
+    embeds: [
+      {
+        footer: {
+          text: "The original Post was made on the Fabric RSS-Feed"
+        },
+        title: entry.title,
+        url: entryUrl,
+        timestamp: entry.published
+      }
+    ],
+    // Only add buttons if this is a single message (no follow-ups)
+    ...(contentChunks.length === 1 && {
       components: [
         {
           type: 1,
@@ -313,117 +310,8 @@ async function sendEntryToDiscord(entry) {
             }
           ]
         }
-      ],
-      username: "Fabric RSS Bot",
-      thread_name: entry.title,
-      avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
-    };
-    
-    return await postToDiscord(WEBHOOKS.fabricblog, singlePayload);
-  }
-  
-  // If content is too long, we have a limitation with Discord forum webhooks
-  // Forum webhooks with thread_name return 204 No Content, making it impossible
-  // to get the thread_id for follow-up messages
-  console.warn(`Entry "${entry.title}" is too long for single message (${fullContent.length} chars)`);
-  console.warn("Discord forum webhooks don't support multi-message threads properly.");
-  console.warn("Consider using a regular channel webhook or truncating content.");
-  
-  // For now, send a truncated version with a note about the limitation
-  const truncatedContent = fullContent.substring(0, maxContentLength - 50) + "...";
-  const truncatedPayload = {
-    content: `${rolePin}${truncatedContent}\n\n*[Content truncated due to Discord forum webhook limitations]*`,
-    embeds: [
-      {
-        footer: {
-          text: "The original Post was made on the Fabric RSS-Feed"
-        },
-        title: entry.title,
-        url: entryUrl,
-        timestamp: entry.published,
-        description: "**Full content available at the original post link**"
-      }
-    ],
-    components: [
-      {
-        type: 1,
-        components: [
-          {
-            type: 2,
-            style: 5,
-            label: "Read Full Post",
-            url: entryUrl
-          },
-          {
-            type: 2,
-            style: 5,
-            url: "https://fabricmc.net/blog/",
-            label: "Fabric Feed"
-          }
-        ]
-      }
-    ],
-    username: "Fabric RSS Bot",
-    thread_name: entry.title,
-    avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
-  };
-  
-  return await postToDiscord(WEBHOOKS.fabricblog, truncatedPayload);
-}
-
-/**
- * Alternative implementation for regular channel webhooks (not forum channels)
- * This supports full multi-message posts but doesn't create forum threads
- * Uncomment and use this function if switching to a regular channel webhook
- */
-/*
-async function sendEntryToDiscordRegularChannel(entry) {
-  // Convert HTML content to Markdown for message content
-  const fullContent = htmlToMarkdown(entry.content);
-  
-  // Split content into chunks that fit within Discord's limits
-  const contentChunks = splitContentIntoChunks(fullContent, 1900); // 1900 to account for role ping + title + padding
-  
-  // Ensure we have a valid URL for the entry
-  const entryUrl = entry.link || entry.id;
-  if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
-    console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
-  }
-  
-  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
-  
-  // Send the first message with full metadata (no thread_name for regular channels)
-  const firstPayload = {
-    content: `<@&1371820347543916554>\n\n**${entry.title}**\n\n${contentChunks[0]}`,
-    embeds: [
-      {
-        footer: {
-          text: "The original Post was made on the Fabric RSS-Feed"
-        },
-        title: entry.title,
-        url: entryUrl,
-        timestamp: entry.published
-      }
-    ],
-    components: [
-      {
-        type: 1,
-        components: [
-          {
-            type: 2,
-            style: 5,
-            label: "Original Post",
-            url: entryUrl
-          },
-          {
-            type: 2,
-            style: 5,
-            url: "https://fabricmc.net/blog/",
-            label: "Fabric Feed"
-          }
-        ]
-      }
-    ],
+      ]
+    }),
     username: "Fabric RSS Bot",
     avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
   };
@@ -434,14 +322,38 @@ async function sendEntryToDiscordRegularChannel(entry) {
     console.error(`Failed to send first message for entry: ${entry.title}`);
     return firstResponse;
   }
-  
+
   // Send follow-up messages for multi-chunk content
   for (let i = 1; i < contentChunks.length; i++) {
     try {
+      const isLastMessage = i === contentChunks.length - 1;
+      
       const followUpPayload = {
-        content: `**${entry.title} (continued ${i}/${contentChunks.length - 1})**\n\n${contentChunks[i]}`,
+        content: `**${entry.title} (continued ${i}/${contentChunks.length - 1})**\n\n${contentChunks[i]}${isLastMessage ? '\n\n---' : ''}`,
         username: "Fabric RSS Bot",
-        avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
+        avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+        // Only add buttons to the last message
+        ...(isLastMessage && {
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 5,
+                  label: "Original Post",
+                  url: entryUrl
+                },
+                {
+                  type: 2,
+                  style: 5,
+                  url: "https://fabricmc.net/blog/",
+                  label: "Fabric Feed"
+                }
+              ]
+            }
+          ]
+        })
       };
       
       const followUpResponse = await postToDiscord(WEBHOOKS.fabricblog, followUpPayload);
@@ -461,8 +373,6 @@ async function sendEntryToDiscordRegularChannel(entry) {
   }
   
   return firstResponse;
-}
-*/
 }
 
 /**
