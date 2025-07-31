@@ -259,7 +259,7 @@ function splitContentIntoChunks(content, maxLength = 1950) {
 }
 
 /**
- * Sends an RSS entry to Discord using the specified format, handling multi-message posts
+ * Sends an RSS entry to Discord using regular channel multi-message approach
  * @param {Object} entry - RSS entry object
  */
 async function sendEntryToDiscord(entry) {
@@ -267,98 +267,118 @@ async function sendEntryToDiscord(entry) {
   const fullContent = htmlToMarkdown(entry.content);
   
   // Split content into chunks that fit within Discord's limits
-  const contentChunks = splitContentIntoChunks(fullContent, 1950); // 1950 to account for role ping + newlines
+  const contentChunks = splitContentIntoChunks(fullContent, 1900); // 1900 to account for role ping + title + padding
   
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
   if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
     console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
   }
+
+  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
   
-  // Send the first message to create the forum thread
+  // Send the first message with title as heading and content
   const firstPayload = {
-    content: `<@&1371820347543916554>\n\n${contentChunks[0]}`, // Role ping followed by first chunk
-    embeds: [
-      {
-        footer: {
-          text: "The original Post was made on the Fabric RSS-Feed"
-        },
-        title: entry.title,
-        url: entryUrl,
-        timestamp: entry.published
-      }
-    ],
-    components: [
-      {
-        type: 1,
-        components: [
-          {
-            type: 2,
-            style: 5,
-            label: "Original Post",
-            url: entryUrl
+    content: `<@&1371820347543916554>\n\n# ${entry.title}\n\n${contentChunks[0]}${contentChunks.length > 1 ? '' : '\n\n---'}`,
+    // Only add embed and buttons if this is a single message (no follow-ups)
+    ...(contentChunks.length === 1 && {
+      embeds: [
+        {
+          footer: {
+            text: "The original Post was made on the Fabric RSS-Feed"
           },
-          {
-            type: 2,
-            style: 5,
-            url: "https://fabricmc.net/blog/",
-            label: "Fabric Feed"
-          }
-        ]
-      }
-    ],
+          title: entry.title,
+          url: entryUrl,
+          timestamp: entry.published
+        }
+      ],
+      components: [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 5,
+              label: "Original Post",
+              url: entryUrl
+            },
+            {
+              type: 2,
+              style: 5,
+              url: "https://fabricmc.net/blog/",
+              label: "Fabric Feed"
+            }
+          ]
+        }
+      ]
+    }),
     username: "Fabric RSS Bot",
-    thread_name: entry.title,
     avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
   };
   
-  // Send the first message
   const firstResponse = await postToDiscord(WEBHOOKS.fabricblog, firstPayload);
   
   if (firstResponse.status !== 200) {
     console.error(`Failed to send first message for entry: ${entry.title}`);
     return firstResponse;
   }
-  
-  // If there are additional content chunks, send them as follow-up messages
-  if (contentChunks.length > 1) {
+
+  // Send follow-up messages for multi-chunk content
+  for (let i = 1; i < contentChunks.length; i++) {
     try {
-      // Extract the thread ID from the Discord response
-      const responseData = await firstResponse.json();
-      const threadId = responseData.discordResponse?.channel_id;
+      const isLastMessage = i === contentChunks.length - 1;
       
-      if (!threadId) {
-        console.error(`Could not extract thread ID from Discord response for entry: ${entry.title}`);
-        console.log('Response data:', JSON.stringify(responseData, null, 2));
-        return firstResponse; // Return success for first message even if follow-ups fail
+      const followUpPayload = {
+        content: `**${entry.title} (continued ${i}/${contentChunks.length - 1})**\n\n${contentChunks[i]}${isLastMessage ? '\n\n---' : ''}`,
+        username: "Fabric RSS Bot",
+        avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+        // Add embed and buttons to the last message
+        ...(isLastMessage && {
+          embeds: [
+            {
+              footer: {
+                text: "The original Post was made on the Fabric RSS-Feed"
+              },
+              title: entry.title,
+              url: entryUrl,
+              timestamp: entry.published
+            }
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 5,
+                  label: "Original Post",
+                  url: entryUrl
+                },
+                {
+                  type: 2,
+                  style: 5,
+                  url: "https://fabricmc.net/blog/",
+                  label: "Fabric Feed"
+                }
+              ]
+            }
+          ]
+        })
+      };
+      
+      const followUpResponse = await postToDiscord(WEBHOOKS.fabricblog, followUpPayload);
+      
+      if (followUpResponse.status !== 200) {
+        console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
+      } else {
+        console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
       }
       
-      console.log(`Sending ${contentChunks.length - 1} follow-up messages to thread ${threadId}`);
-      
-      // Create webhook URL with thread_id parameter
-      const threadWebhookUrl = `${WEBHOOKS.fabricblog}?thread_id=${threadId}`;
-      
-      // Send follow-up messages
-      for (let i = 1; i < contentChunks.length; i++) {
-        const followUpPayload = {
-          content: contentChunks[i],
-          username: "Fabric RSS Bot",
-          avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
-        };
-        
-        const followUpResponse = await postToDiscord(threadWebhookUrl, followUpPayload);
-        
-        if (followUpResponse.status !== 200) {
-          console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
-          // Continue with other follow-up messages even if one fails
-        } else {
-          console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
-        }
-      }
+      // Add delay between messages to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
       
     } catch (error) {
-      console.error(`Error processing follow-up messages for entry ${entry.title}:`, error);
-      // Return success for first message even if follow-ups fail
+      console.error(`Error sending follow-up message ${i} for entry ${entry.title}:`, error);
     }
   }
   
