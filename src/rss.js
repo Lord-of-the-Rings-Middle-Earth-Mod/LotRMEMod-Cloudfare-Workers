@@ -266,21 +266,25 @@ async function sendEntryToDiscord(entry) {
   // Convert HTML content to Markdown for message content
   const fullContent = htmlToMarkdown(entry.content);
   
-  // Split content into chunks that fit within Discord's limits
-  const contentChunks = splitContentIntoChunks(fullContent, 1900); // Reduced to 1900 to account for role ping + title + padding
-  
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
   if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
     console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
   }
   
-  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
+  // Calculate actual overhead: role ping (25) + newlines (2) = 27 chars
+  // Discord limit is 2000, so we can use up to 1973 chars for content
+  // Use 1970 to be safe
+  const rolePin = `<@&1371820347543916554>\n\n`;
+  const maxContentLength = 2000 - rolePin.length - 10; // 10 chars buffer for safety
   
-  // If content fits in a single message, send it normally with forum thread creation
-  if (contentChunks.length === 1) {
+  // Try to fit content in a single message to preserve forum thread functionality
+  if (fullContent.length <= maxContentLength) {
+    console.log(`Entry "${entry.title}" fits in single message (${fullContent.length} chars)`);
+    
+    // Send as single message with forum thread creation
     const singlePayload = {
-      content: `<@&1371820347543916554>\n\n${contentChunks[0]}`, // Role ping followed by content
+      content: `${rolePin}${fullContent}`,
       embeds: [
         {
           footer: {
@@ -318,12 +322,77 @@ async function sendEntryToDiscord(entry) {
     return await postToDiscord(WEBHOOKS.fabricblog, singlePayload);
   }
   
-  // For multi-chunk content, we need a different approach since Discord forum webhooks
-  // with thread_name don't return thread information for follow-up messages
-  console.log(`Multi-chunk content detected for "${entry.title}". Using alternative approach.`);
+  // If content is too long, we have a limitation with Discord forum webhooks
+  // Forum webhooks with thread_name return 204 No Content, making it impossible
+  // to get the thread_id for follow-up messages
+  console.warn(`Entry "${entry.title}" is too long for single message (${fullContent.length} chars)`);
+  console.warn("Discord forum webhooks don't support multi-message threads properly.");
+  console.warn("Consider using a regular channel webhook or truncating content.");
   
-  // Option 1: Send first message without thread_name to get a regular channel message
-  // then use thread creation in the response to send follow-ups
+  // For now, send a truncated version with a note about the limitation
+  const truncatedContent = fullContent.substring(0, maxContentLength - 50) + "...";
+  const truncatedPayload = {
+    content: `${rolePin}${truncatedContent}\n\n*[Content truncated due to Discord forum webhook limitations]*`,
+    embeds: [
+      {
+        footer: {
+          text: "The original Post was made on the Fabric RSS-Feed"
+        },
+        title: entry.title,
+        url: entryUrl,
+        timestamp: entry.published,
+        description: "**Full content available at the original post link**"
+      }
+    ],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: "Read Full Post",
+            url: entryUrl
+          },
+          {
+            type: 2,
+            style: 5,
+            url: "https://fabricmc.net/blog/",
+            label: "Fabric Feed"
+          }
+        ]
+      }
+    ],
+    username: "Fabric RSS Bot",
+    thread_name: entry.title,
+    avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
+  };
+  
+  return await postToDiscord(WEBHOOKS.fabricblog, truncatedPayload);
+}
+
+/**
+ * Alternative implementation for regular channel webhooks (not forum channels)
+ * This supports full multi-message posts but doesn't create forum threads
+ * Uncomment and use this function if switching to a regular channel webhook
+ */
+/*
+async function sendEntryToDiscordRegularChannel(entry) {
+  // Convert HTML content to Markdown for message content
+  const fullContent = htmlToMarkdown(entry.content);
+  
+  // Split content into chunks that fit within Discord's limits
+  const contentChunks = splitContentIntoChunks(fullContent, 1900); // 1900 to account for role ping + title + padding
+  
+  // Ensure we have a valid URL for the entry
+  const entryUrl = entry.link || entry.id;
+  if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
+    console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
+  }
+  
+  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
+  
+  // Send the first message with full metadata (no thread_name for regular channels)
   const firstPayload = {
     content: `<@&1371820347543916554>\n\n**${entry.title}**\n\n${contentChunks[0]}`,
     embeds: [
@@ -359,7 +428,6 @@ async function sendEntryToDiscord(entry) {
     avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
   };
   
-  // Send the first message to a regular channel (no thread_name for multi-part messages)
   const firstResponse = await postToDiscord(WEBHOOKS.fabricblog, firstPayload);
   
   if (firstResponse.status !== 200) {
@@ -367,10 +435,7 @@ async function sendEntryToDiscord(entry) {
     return firstResponse;
   }
   
-  // For multi-chunk content, send follow-up messages immediately after the first one
-  // This will post them in the same channel in sequence
-  console.log(`Sending ${contentChunks.length - 1} follow-up messages for entry: ${entry.title}`);
-  
+  // Send follow-up messages for multi-chunk content
   for (let i = 1; i < contentChunks.length; i++) {
     try {
       const followUpPayload = {
@@ -383,21 +448,21 @@ async function sendEntryToDiscord(entry) {
       
       if (followUpResponse.status !== 200) {
         console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
-        // Continue with other follow-up messages even if one fails
       } else {
         console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
       }
       
-      // Add a small delay between messages to avoid rate limiting
+      // Add delay between messages to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 500));
       
     } catch (error) {
       console.error(`Error sending follow-up message ${i} for entry ${entry.title}:`, error);
-      // Continue with other follow-up messages even if one fails
     }
   }
   
   return firstResponse;
+}
+*/
 }
 
 /**
