@@ -177,212 +177,108 @@ function decodeHTMLEntities(text) {
     .replace(/&apos;/g, "'");
 }
 
-/**
- * Splits content into chunks that fit within Discord's message limits
- * @param {string} content - Content to split
- * @param {number} maxLength - Maximum length per chunk (default: 1950 to account for role ping)
- * @returns {Array<string>} - Array of content chunks
- */
-function splitContentIntoChunks(content, maxLength = 1950) {
-  if (!content || content.length <= maxLength) {
-    return [content || ''];
-  }
-  
-  const chunks = [];
-  let currentChunk = '';
-  
-  // Split by paragraphs first (double newlines)
-  const paragraphs = content.split('\n\n');
-  
-  for (const paragraph of paragraphs) {
-    // If adding this paragraph would exceed the limit
-    if (currentChunk.length + paragraph.length + 2 > maxLength) {
-      // If current chunk has content, add it to chunks
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
-      
-      // If the paragraph itself is too long, split it by sentences
-      if (paragraph.length > maxLength) {
-        const sentences = paragraph.split(/(?<=[.!?])\s+/);
-        for (const sentence of sentences) {
-          if (currentChunk.length + sentence.length + 1 > maxLength) {
-            if (currentChunk.trim()) {
-              chunks.push(currentChunk.trim());
-              currentChunk = '';
-            }
-            
-            // If even a sentence is too long, split by words
-            if (sentence.length > maxLength) {
-              const words = sentence.split(' ');
-              for (const word of words) {
-                if (currentChunk.length + word.length + 1 > maxLength) {
-                  if (currentChunk.trim()) {
-                    chunks.push(currentChunk.trim());
-                    currentChunk = word;
-                  } else {
-                    // Word itself is too long, forcibly split it
-                    if (word.length > maxLength) {
-                      for (let i = 0; i < word.length; i += maxLength) {
-                        chunks.push(word.slice(i, i + maxLength));
-                      }
-                    } else {
-                      currentChunk = word;
-                    }
-                  }
-                } else {
-                  currentChunk += (currentChunk ? ' ' : '') + word;
-                }
-              }
-            } else {
-              currentChunk = sentence;
-            }
-          } else {
-            currentChunk += (currentChunk ? ' ' : '') + sentence;
-          }
-        }
-      } else {
-        currentChunk = paragraph;
-      }
-    } else {
-      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
-    }
-  }
-  
-  // Add any remaining content
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
-  }
-  
-  return chunks.length > 0 ? chunks : [''];
-}
 
 /**
- * Sends an RSS entry to Discord using regular channel multi-message approach
+ * Sends an RSS entry to Discord as a forum thread with shorter content
  * @param {Object} entry - RSS entry object
  */
 async function sendEntryToDiscord(entry) {
   // Convert HTML content to Markdown for message content
   const fullContent = htmlToMarkdown(entry.content);
   
-  // Split content into chunks that fit within Discord's limits
-  const contentChunks = splitContentIntoChunks(fullContent, 1900); // 1900 to account for role ping + title + padding
+  // Truncate content to make it smaller for forum posts (around 800 characters)
+  const maxContentLength = 800;
+  let truncatedContent = fullContent;
+  let isContentTruncated = false;
   
+  if (fullContent.length > maxContentLength) {
+    // Try to cut at paragraph boundary first
+    const paragraphs = fullContent.split('\n\n');
+    truncatedContent = '';
+    
+    for (const paragraph of paragraphs) {
+      if (truncatedContent.length + paragraph.length + 2 <= maxContentLength) {
+        truncatedContent += (truncatedContent ? '\n\n' : '') + paragraph;
+      } else {
+        break;
+      }
+    }
+    
+    // If we still have no content or it's too short, just take first maxContentLength characters
+    if (truncatedContent.length < 200) {
+      truncatedContent = fullContent.substring(0, maxContentLength);
+      // Try to cut at word boundary
+      const lastSpace = truncatedContent.lastIndexOf(' ');
+      if (lastSpace > maxContentLength * 0.8) {
+        truncatedContent = truncatedContent.substring(0, lastSpace);
+      }
+    }
+    
+    isContentTruncated = true;
+  }
+
   // Ensure we have a valid URL for the entry
   const entryUrl = entry.link || entry.id;
   if (!entryUrl || (!entryUrl.startsWith('http://') && !entryUrl.startsWith('https://'))) {
     console.warn(`Entry "${entry.title}" has invalid URL: ${entryUrl}`);
   }
 
-  console.log(`Entry "${entry.title}" content split into ${contentChunks.length} chunks`);
+  console.log(`Entry "${entry.title}" will be posted as forum thread${isContentTruncated ? ' (content truncated)' : ''}`);
   
-  // Send the first message with title as heading and content
-  const firstPayload = {
-    content: `<@&1371820347543916554>\n\n# ${entry.title}\n\n${contentChunks[0]}${contentChunks.length > 1 ? '' : '\n\n---'}`,
-    // Only add embed and buttons if this is a single message (no follow-ups)
-    ...(contentChunks.length === 1 && {
-      embeds: [
-        {
-          footer: {
-            text: "The original Post was made on the Fabric RSS-Feed"
+  // Build the message content with role ping and truncated content
+  let messageContent = `${PINGS.fabricupdates}\n\n${truncatedContent}`;
+  
+  // Add indication that full post should be read on the blog if content was truncated
+  if (isContentTruncated) {
+    messageContent += '\n\n*[Read the full post on the Fabric blog for complete details]*';
+  }
+  
+  // Create the forum thread payload
+  const forumPayload = {
+    content: messageContent,
+    thread_name: entry.title, // This creates the forum thread with the entry title
+    embeds: [
+      {
+        footer: {
+          text: "The original Post was made on the Fabric RSS-Feed"
+        },
+        title: entry.title,
+        url: entryUrl,
+        timestamp: entry.published
+      }
+    ],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 5,
+            label: "Original Post",
+            url: entryUrl
           },
-          title: entry.title,
-          url: entryUrl,
-          timestamp: entry.published
-        }
-      ],
-      components: [
-        {
-          type: 1,
-          components: [
-            {
-              type: 2,
-              style: 5,
-              label: "Original Post",
-              url: entryUrl
-            },
-            {
-              type: 2,
-              style: 5,
-              url: "https://fabricmc.net/blog/",
-              label: "Fabric Feed"
-            }
-          ]
-        }
-      ]
-    }),
+          {
+            type: 2,
+            style: 5,
+            url: "https://fabricmc.net/blog/",
+            label: "Fabric Feed"
+          }
+        ]
+      }
+    ],
     username: "Fabric RSS Bot",
     avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256"
   };
   
-  const firstResponse = await postToDiscord(WEBHOOKS.fabricblog, firstPayload);
+  const response = await postToDiscord(WEBHOOKS.fabricblog, forumPayload);
   
-  if (firstResponse.status !== 200) {
-    console.error(`Failed to send first message for entry: ${entry.title}`);
-    return firstResponse;
-  }
-
-  // Send follow-up messages for multi-chunk content
-  for (let i = 1; i < contentChunks.length; i++) {
-    try {
-      const isLastMessage = i === contentChunks.length - 1;
-      
-      const followUpPayload = {
-        content: `**${entry.title} (continued ${i}/${contentChunks.length - 1})**\n\n${contentChunks[i]}${isLastMessage ? '\n\n---' : ''}`,
-        username: "Fabric RSS Bot",
-        avatar_url: "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
-        // Add embed and buttons to the last message
-        ...(isLastMessage && {
-          embeds: [
-            {
-              footer: {
-                text: "The original Post was made on the Fabric RSS-Feed"
-              },
-              title: entry.title,
-              url: entryUrl,
-              timestamp: entry.published
-            }
-          ],
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 2,
-                  style: 5,
-                  label: "Original Post",
-                  url: entryUrl
-                },
-                {
-                  type: 2,
-                  style: 5,
-                  url: "https://fabricmc.net/blog/",
-                  label: "Fabric Feed"
-                }
-              ]
-            }
-          ]
-        })
-      };
-      
-      const followUpResponse = await postToDiscord(WEBHOOKS.fabricblog, followUpPayload);
-      
-      if (followUpResponse.status !== 200) {
-        console.error(`Failed to send follow-up message ${i} for entry: ${entry.title}`);
-      } else {
-        console.log(`Successfully sent follow-up message ${i}/${contentChunks.length - 1} for entry: ${entry.title}`);
-      }
-      
-      // Add delay between messages to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-    } catch (error) {
-      console.error(`Error sending follow-up message ${i} for entry ${entry.title}:`, error);
-    }
+  if (response.status !== 200) {
+    console.error(`Failed to create forum thread for entry: ${entry.title}`);
+  } else {
+    console.log(`Successfully created forum thread for entry: ${entry.title}`);
   }
   
-  return firstResponse;
+  return response;
 }
 
 /**
