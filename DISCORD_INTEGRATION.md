@@ -11,21 +11,29 @@ This module provides shared Discord webhook functionality used by all other inte
 
 ## Core Function
 
-### `postToDiscord(webhookUrl, payload)`
+### `postToDiscord(webhookUrl, payload, maxRetries = 3)`
 
-The main function that handles all Discord communications:
+The main function that handles all Discord communications with built-in rate limiting and retry logic:
 
 ```javascript
-export async function postToDiscord(webhookUrl, payload)
+export async function postToDiscord(webhookUrl, payload, maxRetries = 3)
 ```
 
 **Parameters:**
 - `webhookUrl` (string): The Discord webhook URL to post to
 - `payload` (object): The Discord message payload object
+- `maxRetries` (number, optional): Maximum retry attempts for rate limiting and errors (default: 3)
 
 **Returns:**
-- `Response`: HTTP response with status 200 (success) or 500 (error)
+- `Response`: HTTP response with status 200 (success), 429 (rate limit exceeded), or 500 (error)
 - **Success Response**: JSON object with Discord API response data including thread information
+
+**Rate Limiting Features:**
+- Automatically retries on HTTP 429 "Too Many Requests" responses
+- Respects Discord's `Retry-After` header for optimal retry timing
+- Falls back to exponential backoff if no `Retry-After` header is provided
+- Also retries on network errors and 5xx server errors
+- Configurable maximum retry attempts to prevent infinite loops
 
 **Enhanced Response Format:**
 ```json
@@ -222,9 +230,11 @@ await postToDiscord(WEBHOOKS.news, testPayload);
 
 ## Rate Limiting
 
-- **Discord Limits**: Discord webhook rate limits are handled by Discord's API
-- **Retry Logic**: Discord automatically retries failed requests
-- **Worker Limits**: No specific rate limiting implemented in worker
+- **Discord Limits**: Discord webhook rate limits (HTTP 429) are now handled with automatic retry logic
+- **Retry Logic**: Implements exponential backoff with respect for Discord's `Retry-After` header
+- **Max Retries**: Configurable maximum retry attempts (default: 3) to prevent infinite loops
+- **Backoff Strategy**: Uses Discord's `Retry-After` header when available, falls back to exponential backoff (2s, 4s, 8s)
+- **Error Recovery**: Also retries on network errors and 5xx server errors with exponential backoff
 
 ## Security
 
