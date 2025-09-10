@@ -173,6 +173,19 @@ async function handleIssue(issue) {
     console.log(`Issue URL: ${issue.html_url}`);
     console.log(`Issue created at: ${issue.created_at}`);
     
+    // Validate timestamp
+    const issueDate = new Date(issue.created_at);
+    const now = new Date();
+    if (issueDate > now) {
+        console.warn(`Warning: Issue timestamp is in the future! Issue: ${issue.created_at}, Now: ${now.toISOString()}`);
+    }
+    if (isNaN(issueDate.getTime())) {
+        console.error(`Error: Invalid timestamp format: ${issue.created_at}`);
+        // Fallback to current time if timestamp is invalid
+        issue.created_at = now.toISOString();
+        console.log(`Using current time as fallback: ${issue.created_at}`);
+    }
+    
     // Format labels - convert array to string
     let labelsText = "None";
     if (issue.labels && issue.labels.length > 0) {
@@ -183,16 +196,22 @@ async function handleIssue(issue) {
     }
 
     // Create the Discord payload with the issue details
+    // Ensure values don't exceed Discord limits
+    const title = issue.title.length > 256 ? issue.title.substring(0, 253) + '...' : issue.title;
+    const description = issue.body ? 
+        (issue.body.length > 4096 ? issue.body.substring(0, 4093) + '...' : issue.body) : 
+        "No description provided";
+    
     const payload = {
         username: "LotR ME Mod Issues",
         avatar_url: AVATAR_URL,
         embeds: [
             {
-                title: issue.title,
+                title: title,
                 author: {
                     name: issue.user?.login || 'Unknown User'
                 },
-                description: issue.body || "No description provided",
+                description: description,
                 fields: [
                     {
                         name: "Labels",

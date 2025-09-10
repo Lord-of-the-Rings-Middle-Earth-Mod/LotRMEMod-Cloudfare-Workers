@@ -17,6 +17,14 @@ export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
             // Log response details for debugging
             console.log(`Discord API response status: ${response.status} ${response.statusText}`);
             
+            // Log response headers for debugging (in case of issues)
+            if (response.status >= 400) {
+                console.log('Discord API response headers:');
+                response.headers.forEach((value, name) => {
+                    console.log(`  ${name}: ${value}`);
+                });
+            }
+            
             // Handle rate limiting (429 Too Many Requests)
             if (response.status === 429) {
                 if (attempt <= maxRetries) {
