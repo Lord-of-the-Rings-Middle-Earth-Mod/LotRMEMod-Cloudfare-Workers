@@ -164,30 +164,61 @@ async function handleRelease(release) {
 
 // Function to handle GitHub Issues
 async function handleIssue(issue) {
+    if (!issue) {
+        console.error('handleIssue called with null or undefined issue');
+        return new Response("Invalid issue data", { status: 400 });
+    }
+    
+    console.log(`Handling GitHub issue: "${issue.title}" by ${issue.user?.login || 'unknown user'}`);
+    console.log(`Issue URL: ${issue.html_url}`);
+    console.log(`Issue created at: ${issue.created_at}`);
+    
+    // Validate timestamp
+    const issueDate = new Date(issue.created_at);
+    const now = new Date();
+    if (issueDate > now) {
+        console.warn(`Warning: Issue timestamp is in the future! Issue: ${issue.created_at}, Now: ${now.toISOString()}`);
+    }
+    if (isNaN(issueDate.getTime())) {
+        console.error(`Error: Invalid timestamp format: ${issue.created_at}`);
+        // Fallback to current time if timestamp is invalid
+        issue.created_at = now.toISOString();
+        console.log(`Using current time as fallback: ${issue.created_at}`);
+    }
+    
     // Format labels - convert array to string
     let labelsText = "None";
     if (issue.labels && issue.labels.length > 0) {
         labelsText = issue.labels.map(label => label.name).join(", ");
+        console.log(`Issue labels: ${labelsText}`);
+    } else {
+        console.log('Issue has no labels');
     }
 
     // Create the Discord payload with the issue details
+    // Ensure values don't exceed Discord limits
+    const title = issue.title.length > 256 ? issue.title.substring(0, 253) + '...' : issue.title;
+    const description = issue.body ? 
+        (issue.body.length > 4096 ? issue.body.substring(0, 4093) + '...' : issue.body) : 
+        "No description provided";
+    
     const payload = {
         username: "LotR ME Mod Issues",
         avatar_url: AVATAR_URL,
         embeds: [
             {
-                title: issue.title,
+                title: title,
                 author: {
-                    name: issue.user.login
+                    name: issue.user?.login || 'Unknown User'
                 },
-                description: issue.body || "No description provided",
+                description: description,
                 fields: [
                     {
                         name: "Labels",
                         value: labelsText
                     }
                 ],
-                timestamp: new Date().toISOString(),
+                timestamp: issue.created_at,
                 footer: {
                     text: "This issue was created on GitHub"
                 }
@@ -208,5 +239,8 @@ async function handleIssue(issue) {
         ]
     };
 
+    console.log(`Posting issue to Discord webhook: ${WEBHOOKS.issues}`);
+    console.log(`Issue payload prepared for Discord`);
+    
     return postToDiscord(WEBHOOKS.issues, payload);
 }
