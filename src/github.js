@@ -169,10 +169,6 @@ async function handleIssue(issue) {
         return new Response("Invalid issue data", { status: 400 });
     }
     
-    console.log(`Handling GitHub issue: "${issue.title}" by ${issue.user?.login || 'unknown user'}`);
-    console.log(`Issue URL: ${issue.html_url}`);
-    console.log(`Issue created at: ${issue.created_at}`);
-    
     // Validate timestamp
     const issueDate = new Date(issue.created_at);
     const now = new Date();
@@ -190,10 +186,10 @@ async function handleIssue(issue) {
     let labelsText = "None";
     if (issue.labels && issue.labels.length > 0) {
         labelsText = issue.labels.map(label => label.name).join(", ");
-        console.log(`Issue labels: ${labelsText}`);
-    } else {
-        console.log('Issue has no labels');
     }
+    
+    // Single consolidated log with essential information
+    console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url}`);
 
     // Create the Discord payload with the issue details
     // Ensure values don't exceed Discord limits
@@ -239,8 +235,5 @@ async function handleIssue(issue) {
         ]
     };
 
-    console.log(`Posting issue to Discord webhook: ${WEBHOOKS.issues}`);
-    console.log(`Issue payload prepared for Discord`);
-    
     return postToDiscord(WEBHOOKS.issues, payload);
 }

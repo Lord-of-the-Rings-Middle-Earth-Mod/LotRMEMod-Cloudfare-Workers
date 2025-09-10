@@ -2,10 +2,7 @@
 export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
     const request = async (attempt = 1) => {
         try {
-            console.log(`Posting to Discord webhook (attempt ${attempt}/${maxRetries + 1}): ${webhookUrl.substring(0, 50)}...`);
-            if (attempt === 1) {
-                console.log(`Payload: ${JSON.stringify(payload, null, 2)}`);
-            }
+            console.log(`Posting to Discord webhook (attempt ${attempt}/${maxRetries + 1})`);
             
             // Send the HTTP POST request to Discord with the webhook URL and payload
             const response = await fetch(webhookUrl, {
@@ -14,11 +11,9 @@ export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
                 body: JSON.stringify(payload)
             });
 
-            // Log response details for debugging
-            console.log(`Discord API response status: ${response.status} ${response.statusText}`);
-            
-            // Log response headers for debugging (in case of issues)
+            // Log response details only for errors
             if (response.status >= 400) {
+                console.log(`Discord API response status: ${response.status} ${response.statusText}`);
                 console.log('Discord API response headers:');
                 response.headers.forEach((value, name) => {
                     console.log(`  ${name}: ${value}`);
@@ -64,19 +59,21 @@ export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
                 return new Response(`Discord Webhook Error: ${response.status} ${response.statusText} - ${errorDetails}`, { status: 500 });
             }
             
-            console.log('Discord message posted successfully');
+            // Success - combine the success logging into one message
+            if (response.status === 204) {
+                console.log('Discord webhook posted successfully (204 No Content)');
+            } else {
+                console.log('Discord message posted successfully');
+            }
             
             // Get the response data to extract thread information if needed (only if there's content)
             let responseData = null;
             if (response.status !== 204) {
                 try {
                     responseData = await response.json();
-                    console.log('Discord API response data:', JSON.stringify(responseData, null, 2));
                 } catch (e) {
                     console.log('Failed to parse Discord response JSON:', e.message);
                 }
-            } else {
-                console.log('Discord webhook posted successfully (204 No Content)');
             }
             
             // Return success response with Discord API data
