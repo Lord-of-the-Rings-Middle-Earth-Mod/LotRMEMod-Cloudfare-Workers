@@ -164,10 +164,22 @@ async function handleRelease(release) {
 
 // Function to handle GitHub Issues
 async function handleIssue(issue) {
+    if (!issue) {
+        console.error('handleIssue called with null or undefined issue');
+        return new Response("Invalid issue data", { status: 400 });
+    }
+    
+    console.log(`Handling GitHub issue: "${issue.title}" by ${issue.user?.login || 'unknown user'}`);
+    console.log(`Issue URL: ${issue.html_url}`);
+    console.log(`Issue created at: ${issue.created_at}`);
+    
     // Format labels - convert array to string
     let labelsText = "None";
     if (issue.labels && issue.labels.length > 0) {
         labelsText = issue.labels.map(label => label.name).join(", ");
+        console.log(`Issue labels: ${labelsText}`);
+    } else {
+        console.log('Issue has no labels');
     }
 
     // Create the Discord payload with the issue details
@@ -178,7 +190,7 @@ async function handleIssue(issue) {
             {
                 title: issue.title,
                 author: {
-                    name: issue.user.login
+                    name: issue.user?.login || 'Unknown User'
                 },
                 description: issue.body || "No description provided",
                 fields: [
@@ -187,7 +199,7 @@ async function handleIssue(issue) {
                         value: labelsText
                     }
                 ],
-                timestamp: new Date().toISOString(),
+                timestamp: issue.created_at,
                 footer: {
                     text: "This issue was created on GitHub"
                 }
@@ -208,5 +220,8 @@ async function handleIssue(issue) {
         ]
     };
 
+    console.log(`Posting issue to Discord webhook: ${WEBHOOKS.issues}`);
+    console.log(`Issue payload prepared for Discord`);
+    
     return postToDiscord(WEBHOOKS.issues, payload);
 }

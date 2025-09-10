@@ -58,13 +58,17 @@ export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
             
             console.log('Discord message posted successfully');
             
-            // Get the response data to extract thread information if needed
+            // Get the response data to extract thread information if needed (only if there's content)
             let responseData = null;
-            try {
-                responseData = await response.json();
-                console.log('Discord API response data:', JSON.stringify(responseData, null, 2));
-            } catch (e) {
-                console.log('No JSON response data available');
+            if (response.status !== 204) {
+                try {
+                    responseData = await response.json();
+                    console.log('Discord API response data:', JSON.stringify(responseData, null, 2));
+                } catch (e) {
+                    console.log('Failed to parse Discord response JSON:', e.message);
+                }
+            } else {
+                console.log('Discord webhook posted successfully (204 No Content)');
             }
             
             // Return success response with Discord API data
