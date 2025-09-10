@@ -1,0 +1,38 @@
+name: Bug Report
+description: Create a bug report issue, so we can work on resolving the issue.
+title: "[Bug Report] "
+type: "Bug"
+body:
+  - type: markdown
+    attributes:
+      value: "Thank you for submitting a bug report! Please fill out the following information to help us resolve the issue.
+      Please be aware, that we might not fix it right away, we need to priorities critical bugs first.  
+      When filling out the form, please provide as much information as possible.
+      We need to be able to reproduce the bug in order to fix it.  
+      If you don´t know how to fill out the form properly check out <https://www.chiark.greenend.org.uk/~sgtatham/bugs.html> for more information."
+  - type: dropdown
+    id: source
+    attributes:
+      label: "Source of the Webhook"
+      description: "From what source should have come an input?"
+      options:
+        - "GitHub Release"
+        - "GitHub Discussions"
+        - "GitHub Issue"
+        - "GitHub Monthly Update"
+        - "Fabric Feed"
+        - "E-Mail"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: "Please describe the bug in detail."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs"
+      description: "Please share the logs from cloudfare."
