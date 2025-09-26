@@ -19,6 +19,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
   - `WEBHOOKS.suggestions` for ideas and suggestions  
   - `WEBHOOKS.changelog` for detailed release notes
   - `WEBHOOKS.issues` for new GitHub issues
+  - `WEBHOOKS.prs` for pull request notifications
 - **Role Pings**: Configured in `config.js` as `PINGS` object
 - **Avatar**: Uses `AVATAR_URL` from config for consistent branding
 
@@ -31,8 +32,23 @@ This module implements automatic GitHub webhook processing and Discord integrati
   - Discussion created (announcements, suggestions)
   - Release published
   - Issue opened
+  - Pull request events (opened, ready_for_review, review_requested, reopened, synchronize)
 
 ## Supported GitHub Events
+
+### Pull Requests
+- **Pull Request Events**:
+  - Routes to PRs channel with contributor role ping
+  - Username: "Lotr ME Mod PRs"  
+  - Includes "PR on GitHub" button linking to the specific PR
+  - **Supported Actions**:
+    - `opened` (if not draft)
+    - `ready_for_review` 
+    - `review_requested`
+    - `reopened` (if not draft)
+    - `synchronize` (if not draft)
+  - **Draft Filtering**: Draft PRs are ignored for opened/reopened/synchronize actions
+  - **Message Formats**: Different templates for general PR events vs review requests
 
 ### Issues
 - **New Issues**:
@@ -67,6 +83,70 @@ This module implements automatic GitHub webhook processing and Discord integrati
 - **Interactive Buttons**: News channel includes buttons for quick access to changelog Discord channel and GitHub release
 
 ## Message Format
+
+### Pull Request Messages
+
+**Standard PR Events (opened, ready_for_review, reopened, synchronize):**
+```json
+{
+  "components": [
+    {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "style": 5,
+          "label": "PR on GitHub",
+          "url": "{pull_request.html_url}"
+        }
+      ]
+    }
+  ],
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "username": "Lotr ME Mod PRs",
+  "embeds": [
+    {
+      "title": "PR {number} {action}",
+      "description": "<@&1301093445951164498>\nThe PR {number} from {user} is ready for review.\n",
+      "timestamp": "ISO Date",
+      "footer": {
+        "text": "The PR was {action} on "
+      }
+    }
+  ]
+}
+```
+
+**Review Request Events:**
+```json
+{
+  "components": [
+    {
+      "type": 1,
+      "components": [
+        {
+          "type": 2,
+          "style": 5,
+          "label": "PR on GitHub",
+          "url": "{pull_request.html_url}"
+        }
+      ]
+    }
+  ],
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "username": "Lotr ME Mod PRs",
+  "embeds": [
+    {
+      "title": "PR {number} review requested",
+      "description": "<@&1301093445951164498>\n{user} has requested {requested} to review his PR {number}.\n",
+      "timestamp": "ISO Date",
+      "footer": {
+        "text": "The PR was review requested on "
+      }
+    }
+  ]
+}
+```
 
 ### Issue Messages
 ```json
@@ -193,8 +273,14 @@ To test the GitHub integration:
 2. **Issue Test**: Create a new issue in the repository
 3. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
 4. **Release Test**: Publish a new release in the repository
-5. **Check Logs**: Monitor Cloudflare Worker logs for processing status
-6. **Verify Discord**: Check the configured Discord channels for new messages
+5. **Pull Request Tests**: 
+   - Open a new PR (non-draft) - should post notification
+   - Open a draft PR - should be ignored
+   - Convert draft to ready for review - should post notification
+   - Request review from someone - should post notification
+   - Push new commits to existing PR - should post notification (if non-draft)
+6. **Check Logs**: Monitor Cloudflare Worker logs for processing status
+7. **Verify Discord**: Check the configured Discord channels for new messages
 
 ## Files Modified
 
