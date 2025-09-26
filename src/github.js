@@ -4,13 +4,12 @@ import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; //
 export async function handleGitHubWebhook(request) {
     const data = await request.json();
 
-    // We ignore actions that are not 'created', 'published', or 'opened'.
-    if (data.action !== "created" && data.action !== "published" && data.action !== "opened") {
-        return new Response("Ignored", { status: 200 });
-    }
-
     // If it's a discussion, handle it
     if (data.discussion) {
+        // We only handle 'created' action for discussions
+        if (data.action !== "created") {
+            return new Response("Ignored", { status: 200 });
+        }
         return handleDiscussion(data.discussion);
     }
     // If it's a release, handle it
@@ -20,6 +19,14 @@ export async function handleGitHubWebhook(request) {
     // If it's an issue, handle it
     else if (data.issue && data.action == "opened") {
         return handleIssue(data.issue);
+    }
+    // If it's a pull request, handle it
+    else if (data.pull_request) {
+        // We handle specific PR actions: opened, ready_for_review, review_requested, reopened, synchronize
+        if (["opened", "ready_for_review", "review_requested", "reopened", "synchronize"].includes(data.action)) {
+            return handlePullRequest(data.pull_request, data.action, data.requested_reviewer);
+        }
+        return new Response("Ignored", { status: 200 });
     }
 
     return new Response("Ignored", { status: 200 });
@@ -236,4 +243,96 @@ async function handleIssue(issue) {
     };
 
     return postToDiscord(WEBHOOKS.issues, payload);
+}
+
+// Function to handle GitHub Pull Requests
+async function handlePullRequest(pullRequest, action, requestedReviewer) {
+    if (!pullRequest) {
+        console.error('handlePullRequest called with null or undefined pull request');
+        return new Response("Invalid pull request data", { status: 400 });
+    }
+    
+    // Filter based on draft status and action
+    // We only notify for: opened (non-draft), ready_for_review, review_requested, reopened (non-draft), synchronize (non-draft)
+    const isDraft = pullRequest.draft;
+    
+    if ((action === "opened" || action === "reopened" || action === "synchronize") && isDraft) {
+        console.log(`Ignoring ${action} action for draft PR #${pullRequest.number}`);
+        return new Response("Ignored - draft PR", { status: 200 });
+    }
+
+    console.log(`Processing GitHub PR #${pullRequest.number} action: ${action}, draft: ${isDraft}, by ${pullRequest.user?.login || 'unknown user'}`);
+
+    // Determine message content based on action
+    let title, description, footerText;
+    const prNumber = pullRequest.number;
+    const author = pullRequest.user?.login || 'Unknown User';
+    
+    switch (action) {
+        case "opened":
+            title = `PR ${prNumber} opened`;
+            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
+            footerText = "The PR was opened on ";
+            break;
+            
+        case "ready_for_review":
+            title = `PR ${prNumber} ready for review`;
+            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
+            footerText = "The PR was marked ready for review on ";
+            break;
+            
+        case "reopened":
+            title = `PR ${prNumber} reopened`;
+            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
+            footerText = "The PR was reopened on ";
+            break;
+            
+        case "synchronize":
+            title = `PR ${prNumber} synchronized`;
+            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
+            footerText = "The PR was synchronized on ";
+            break;
+            
+        case "review_requested":
+            // For review_requested, we need the requested reviewer info
+            const reviewerName = requestedReviewer?.login || 'someone';
+            title = `PR ${prNumber} review requested`;
+            description = `<@&1301093445951164498>\n${author} has requested ${reviewerName} to review his PR ${prNumber}.\n`;
+            footerText = "The PR was review requested on ";
+            break;
+            
+        default:
+            return new Response("Unsupported action", { status: 400 });
+    }
+
+    // Create the Discord payload
+    const payload = {
+        components: [
+            {
+                type: 1,
+                components: [
+                    {
+                        type: 2,
+                        style: 5,
+                        label: "PR on GitHub",
+                        url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pulls"
+                    }
+                ]
+            }
+        ],
+        avatar_url: AVATAR_URL,
+        username: "Lotr ME Mod PRs",
+        embeds: [
+            {
+                title: title,
+                description: description,
+                timestamp: new Date().toISOString(),
+                footer: {
+                    text: footerText
+                }
+            }
+        ]
+    };
+
+    return postToDiscord(WEBHOOKS.prs, payload);
 }
