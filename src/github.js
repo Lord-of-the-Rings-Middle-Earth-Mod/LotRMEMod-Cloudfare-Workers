@@ -306,6 +306,7 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
     }
 
     // Create the Discord payload
+    const prUrl = pullRequest.html_url || `https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pull/${prNumber}`;
     const payload = {
         components: [
             {
@@ -315,7 +316,7 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
                         type: 2,
                         style: 5,
                         label: "PR on GitHub",
-                        url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pulls"
+                        url: prUrl
                     }
                 ]
             }

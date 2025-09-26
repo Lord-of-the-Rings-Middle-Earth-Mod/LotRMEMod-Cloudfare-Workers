@@ -40,7 +40,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
 - **Pull Request Events**:
   - Routes to PRs channel with contributor role ping
   - Username: "Lotr ME Mod PRs"  
-  - Includes "PR on GitHub" button linking to the PR list
+  - Includes "PR on GitHub" button linking to the specific PR
   - **Supported Actions**:
     - `opened` (if not draft)
     - `ready_for_review` 
@@ -97,7 +97,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
           "type": 2,
           "style": 5,
           "label": "PR on GitHub",
-          "url": "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pulls"
+          "url": "{pull_request.html_url}"
         }
       ]
     }
@@ -128,7 +128,7 @@ This module implements automatic GitHub webhook processing and Discord integrati
           "type": 2,
           "style": 5,
           "label": "PR on GitHub",
-          "url": "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pulls"
+          "url": "{pull_request.html_url}"
         }
       ]
     }
