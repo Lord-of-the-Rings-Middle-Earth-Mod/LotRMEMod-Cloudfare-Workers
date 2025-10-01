@@ -11,20 +11,45 @@ This module provides shared Discord webhook functionality used by all other inte
 
 ## Core Function
 
-### `postToDiscord(webhookUrl, payload)`
+### `postToDiscord(webhookUrl, payload, maxRetries = 3)`
 
-The main function that handles all Discord communications:
+The main function that handles all Discord communications with built-in rate limiting and retry logic:
 
 ```javascript
-export async function postToDiscord(webhookUrl, payload)
+export async function postToDiscord(webhookUrl, payload, maxRetries = 3)
 ```
 
 **Parameters:**
 - `webhookUrl` (string): The Discord webhook URL to post to
 - `payload` (object): The Discord message payload object
+- `maxRetries` (number, optional): Maximum retry attempts for rate limiting and errors (default: 3)
 
 **Returns:**
-- `Response`: HTTP response with status 200 (success) or 500 (error)
+- `Response`: HTTP response with status 200 (success), 429 (rate limit exceeded), or 500 (error)
+- **Success Response**: JSON object with Discord API response data including thread information
+
+**Rate Limiting Features:**
+- Automatically retries on HTTP 429 "Too Many Requests" responses
+- Respects Discord's `Retry-After` header for optimal retry timing
+- Falls back to exponential backoff if no `Retry-After` header is provided
+- Also retries on network errors and 5xx server errors
+- Configurable maximum retry attempts to prevent infinite loops
+
+**Enhanced Response Format:**
+```json
+{
+  "success": true,
+  "discordResponse": {
+    "id": "message_id",
+    "channel_id": "thread_id_if_thread_created",
+    "guild_id": "guild_id",
+    "timestamp": "2024-01-01T00:00:00.000000+00:00",
+    // ... other Discord API response fields
+  }
+}
+```
+
+The `channel_id` field contains the thread ID when a new forum thread is created, enabling follow-up messages to be sent to the same thread using the `?thread_id=` parameter.
 
 ## Discord Payload Format
 
@@ -63,6 +88,47 @@ The function accepts standard Discord webhook payload objects. Common structure:
 }
 ```
 
+## Multi-Message Thread Support
+
+The Discord integration now supports coordinated multi-message posting within forum threads:
+
+### Thread Creation
+
+When a payload includes `thread_name`, Discord creates a new forum thread and returns the thread ID in the response:
+
+```javascript
+const response = await postToDiscord(webhookUrl, {
+  content: "First message content",
+  thread_name: "Thread Title",
+  // ... other payload properties
+});
+
+const responseData = await response.json();
+const threadId = responseData.discordResponse?.channel_id;
+```
+
+### Follow-up Messages
+
+Additional messages can be sent to the same thread using the `?thread_id=` parameter:
+
+```javascript
+const threadWebhookUrl = `${webhookUrl}?thread_id=${threadId}`;
+await postToDiscord(threadWebhookUrl, {
+  content: "Follow-up message content",
+  username: "Bot Name",
+  avatar_url: "https://example.com/avatar.jpg"
+});
+```
+
+### Usage Pattern
+
+This enables sending complete long-form content across multiple messages while maintaining organization:
+
+1. Send first message with full metadata (embed, buttons, role ping) to create thread
+2. Extract thread ID from Discord API response
+3. Send additional content chunks to the same thread
+4. Each message maintains consistent bot identity (username, avatar)
+
 ## Usage by Other Modules
 
 ### GitHub Integration
@@ -79,8 +145,14 @@ await postToDiscord(WEBHOOKS.news, newsPayload);
 import { postToDiscord } from './discord.js';
 import { WEBHOOKS } from './config.js';
 
-// Post RSS entry to fabric blog channel
-await postToDiscord(WEBHOOKS.fabricblog, rssPayload);
+// Post RSS entry first message to create thread
+const firstResponse = await postToDiscord(WEBHOOKS.fabricblog, firstPayload);
+const responseData = await firstResponse.json();
+const threadId = responseData.discordResponse?.channel_id;
+
+// Send follow-up messages to the same thread
+const threadWebhookUrl = `${WEBHOOKS.fabricblog}?thread_id=${threadId}`;
+await postToDiscord(threadWebhookUrl, followUpPayload);
 ```
 
 ### Mail Integration
@@ -134,7 +206,9 @@ Supports all Discord webhook features:
 - **Embeds**: Rich formatted content with colors, fields, footers
 - **Components**: Buttons and other interactive elements
 - **Threads**: Automatic thread creation for organized discussions
+- **Thread Follow-ups**: Send additional messages to existing threads using `?thread_id=` parameter
 - **Role Mentions**: Ping specific roles in messages
+- **Multi-Message Support**: Coordinate multiple messages within the same thread
 - **File Attachments**: Can be included in payload (not currently used)
 
 ## Testing
@@ -156,9 +230,11 @@ await postToDiscord(WEBHOOKS.news, testPayload);
 
 ## Rate Limiting
 
-- **Discord Limits**: Discord webhook rate limits are handled by Discord's API
-- **Retry Logic**: Discord automatically retries failed requests
-- **Worker Limits**: No specific rate limiting implemented in worker
+- **Discord Limits**: Discord webhook rate limits (HTTP 429) are now handled with automatic retry logic
+- **Retry Logic**: Implements exponential backoff with respect for Discord's `Retry-After` header
+- **Max Retries**: Configurable maximum retry attempts (default: 3) to prevent infinite loops
+- **Backoff Strategy**: Uses Discord's `Retry-After` header when available, falls back to exponential backoff (2s, 4s, 8s)
+- **Error Recovery**: Also retries on network errors and 5xx server errors with exponential backoff
 
 ## Security
 

@@ -14,7 +14,8 @@ export async function handleMails(request, env) {
         avatar_url: AVATAR_URL,
         content: `📧 New E-Mail from *${from}*:\n# ${subject}\n\n${body}`,
         embeds: [],
-        thread_name: `${subject}`
+        thread_name: `${subject}`,
+        applied_tags: ["1398967786860183724"]
       };
 
     return postToDiscord(WEBHOOKS.mails, payload);
