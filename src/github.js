@@ -267,30 +267,31 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
     let title, description, footerText;
     const prNumber = pullRequest.number;
     const author = pullRequest.user?.login || 'Unknown User';
+    const prTitle = pullRequest.title || 'Untitled PR';
     
     switch (action) {
         case "opened":
-            title = `PR ${prNumber} opened`;
-            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "PR opened";
+            title = `PR ${prNumber} opened: ${prTitle}`;
+            description = `<@&1301093445951164498>\n**${author}** has opened a new pull request that is ready for review.`;
+            footerText = "This PR was opened";
             break;
             
         case "ready_for_review":
-            title = `PR ${prNumber} ready for review`;
-            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "PR marked ready for review";
+            title = `PR ${prNumber} ready for review: ${prTitle}`;
+            description = `<@&1301093445951164498>\n**${author}** has marked their pull request as ready for review.`;
+            footerText = "This PR was marked ready for review";
             break;
             
         case "reopened":
-            title = `PR ${prNumber} reopened`;
-            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "PR reopened";
+            title = `PR ${prNumber} reopened: ${prTitle}`;
+            description = `<@&1301093445951164498>\n**${author}** has reopened their pull request for review.`;
+            footerText = "This PR was reopened";
             break;
             
         case "synchronize":
-            title = `PR ${prNumber} synchronized`;
-            description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "PR synchronized";
+            title = `PR ${prNumber} synchronized: ${prTitle}`;
+            description = `<@&1301093445951164498>\n**${author}** has updated their pull request with new changes.`;
+            footerText = "This PR was updated with new changes";
             break;
             
         case "review_requested":
@@ -305,9 +306,9 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
                 console.warn(`Missing or invalid requested reviewer data for PR ${prNumber}`);
             }
             
-            title = `PR ${prNumber} review requested`;
-            description = `<@&1301093445951164498>\n${author} has requested ${reviewerName} to review his PR ${prNumber}.\n`;
-            footerText = "Review requested";
+            title = `PR ${prNumber} review requested: ${prTitle}`;
+            description = `<@&1301093445951164498>\n**${author}** has requested **${reviewerName}** to review their pull request.`;
+            footerText = "This PR review was requested";
             break;
             
         default:
@@ -316,6 +317,31 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
 
     // Create the Discord payload
     const prUrl = pullRequest.html_url || `https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pull/${prNumber}`;
+    
+    // Prepare embed fields
+    const embedFields = [];
+    
+    // Add PR description if available and not too long
+    if (pullRequest.body && pullRequest.body.trim()) {
+        const trimmedBody = pullRequest.body.length > 300 
+            ? pullRequest.body.substring(0, 297) + '...' 
+            : pullRequest.body;
+        embedFields.push({
+            name: "Description",
+            value: trimmedBody,
+            inline: false
+        });
+    }
+    
+    // Add branch information
+    if (pullRequest.head && pullRequest.base) {
+        embedFields.push({
+            name: "Changes",
+            value: `\`${pullRequest.head.ref}\` → \`${pullRequest.base.ref}\``,
+            inline: true
+        });
+    }
+    
     const payload = {
         components: [
             {
@@ -324,18 +350,21 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
                     {
                         type: 2,
                         style: 5,
-                        label: "PR on GitHub",
+                        label: "View PR on GitHub",
                         url: prUrl
                     }
                 ]
             }
         ],
         avatar_url: AVATAR_URL,
-        username: "Lotr ME Mod PRs",
+        username: "LotR ME Mod PRs",
         embeds: [
             {
                 title: title,
                 description: description,
+                url: prUrl,
+                color: 1190012,
+                fields: embedFields,
                 timestamp: new Date().toISOString(),
                 footer: {
                     text: footerText
