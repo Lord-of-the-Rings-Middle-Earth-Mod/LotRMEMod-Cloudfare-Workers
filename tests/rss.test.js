@@ -24,6 +24,14 @@ vi.mock('../src/config.js', () => ({
 // Mock fetch globally
 global.fetch = vi.fn();
 
+// Mock console to suppress Discord-related output during tests
+global.console = {
+  ...console,
+  log: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn()
+};
+
 import { postToDiscord } from '../src/discord.js';
 import { readFromKV, saveToKV } from '../src/kvutils.js';
 
