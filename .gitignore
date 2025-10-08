@@ -5,7 +5,7 @@ pnpm-lock.yaml
 yarn.lock
 
 # Cloudflare spezifische Dateien
-wrangler.toml
+# wrangler.toml - should be tracked
 wrangler.lock
 
 # Editor-/IDE-Dateien
@@ -13,3 +13,11 @@ wrangler.lock
 .idea/
 *.log
 .DS_Store
+
+# Test coverage output
+coverage/
+.nyc_output/
+
+# Temporary files
+.tmp/
+tmp/

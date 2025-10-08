@@ -1,0 +1,28 @@
+{
+  "name": "lotrme-cloudflare-workers",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cloudflare Workers for LotR Middle Earth Mod GitHub integrations",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "github-webhooks",
+    "discord-integration",
+    "rss-feed",
+    "lotr",
+    "minecraft-mod"
+  ],
+  "author": "Lord of the Rings Middle Earth Mod Team",
+  "license": "GPL-3.0"
+}
