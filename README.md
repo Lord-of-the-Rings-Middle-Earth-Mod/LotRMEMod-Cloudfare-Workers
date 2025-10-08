@@ -2,6 +2,9 @@
 
 This repository contains a Cloudflare Worker that provides multiple Discord integrations for the Lord of the Rings Middle Earth Mod community. The worker handles automated posting of content from various sources to Discord channels via webhooks.
 
+Test Coverage
+[![codecov](https://codecov.io/gh/Lord-of-the-Rings-Middle-Earth-Mod/LotRMEMod-Cloudfare-Workers/graph/badge.svg?token=H4VWZ2MSHC)](https://codecov.io/gh/Lord-of-the-Rings-Middle-Earth-Mod/LotRMEMod-Cloudfare-Workers)
+
 ## Features Overview
 
 The worker provides the following major functionalities:
