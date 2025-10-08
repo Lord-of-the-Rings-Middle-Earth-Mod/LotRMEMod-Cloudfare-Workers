@@ -13,13 +13,26 @@ This module implements automatic GitHub webhook processing and Discord integrati
 
 ## Configuration
 
-- **GitHub Webhooks**: Configured to receive `created` and `published` actions
-- **Discord Webhooks**: Uses multiple channels from `config.js`:
-  - `WEBHOOKS.news` for announcements and releases
-  - `WEBHOOKS.suggestions` for ideas and suggestions  
-  - `WEBHOOKS.changelog` for detailed release notes
-  - `WEBHOOKS.issues` for new GitHub issues
-  - `WEBHOOKS.prs` for pull request notifications
+### Discord Webhooks Setup
+
+Before the integration can work, you must configure valid Discord webhook URLs in `src/config.js`:
+
+- **WEBHOOKS.news** for announcements and releases
+- **WEBHOOKS.suggestions** for ideas and suggestions  
+- **WEBHOOKS.changelog** for detailed release notes
+- **WEBHOOKS.issues** for new GitHub issues
+- **WEBHOOKS.prs** for pull request notifications ⚠️ **REQUIRED**
+
+**Important:** Replace placeholder URLs with actual Discord webhook URLs from your server settings. URLs containing "PLACEHOLDER" will cause 405 Method Not Allowed errors.
+
+### GitHub Webhook Setup
+
+- **GitHub Webhooks**: Configure webhook in your repository settings to point to the `/github` endpoint
+- **Events**: Enable webhook for discussions, releases, issues, and pull requests
+- **Content Type**: Set to `application/json`
+
+### Additional Configuration
+
 - **Role Pings**: Configured in `config.js` as `PINGS` object
 - **Avatar**: Uses `AVATAR_URL` from config for consistent branding
 

@@ -1,5 +1,12 @@
 // The function to post messages to Discord with rate limiting and retry logic
 export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
+    // Validate webhook URL before making request
+    if (!webhookUrl || webhookUrl.includes('PLACEHOLDER') || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+        const errorMsg = `Invalid Discord webhook URL: ${webhookUrl}. Please configure a valid Discord webhook URL in config.js`;
+        console.error(errorMsg);
+        return new Response(errorMsg, { status: 400 });
+    }
+    
     const request = async (attempt = 1) => {
         try {
             console.log(`Posting to Discord webhook (attempt ${attempt}/${maxRetries + 1})`);
