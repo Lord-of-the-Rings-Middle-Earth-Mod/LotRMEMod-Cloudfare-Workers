@@ -271,25 +271,25 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
     
     switch (action) {
         case "opened":
-            title = `PR #${prNumber}: ${prTitle}`;
+            title = `PR ${prNumber} opened: ${prTitle}`;
             description = `<@&1301093445951164498>\n**${author}** has opened a new pull request that is ready for review.`;
             footerText = "This PR was opened";
             break;
             
         case "ready_for_review":
-            title = `PR #${prNumber}: ${prTitle}`;
+            title = `PR ${prNumber} ready for review: ${prTitle}`;
             description = `<@&1301093445951164498>\n**${author}** has marked their pull request as ready for review.`;
             footerText = "This PR was marked ready for review";
             break;
             
         case "reopened":
-            title = `PR #${prNumber}: ${prTitle}`;
+            title = `PR ${prNumber} reopened: ${prTitle}`;
             description = `<@&1301093445951164498>\n**${author}** has reopened their pull request for review.`;
             footerText = "This PR was reopened";
             break;
             
         case "synchronize":
-            title = `PR #${prNumber}: ${prTitle}`;
+            title = `PR ${prNumber} synchronized: ${prTitle}`;
             description = `<@&1301093445951164498>\n**${author}** has updated their pull request with new changes.`;
             footerText = "This PR was updated with new changes";
             break;
@@ -306,7 +306,7 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
                 console.warn(`Missing or invalid requested reviewer data for PR ${prNumber}`);
             }
             
-            title = `PR #${prNumber}: ${prTitle}`;
+            title = `PR ${prNumber} review requested: ${prTitle}`;
             description = `<@&1301093445951164498>\n**${author}** has requested **${reviewerName}** to review their pull request.`;
             footerText = "This PR review was requested";
             break;
