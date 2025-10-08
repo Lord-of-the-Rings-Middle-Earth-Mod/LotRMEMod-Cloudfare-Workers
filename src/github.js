@@ -272,33 +272,42 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
         case "opened":
             title = `PR ${prNumber} opened`;
             description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "The PR was opened on ";
+            footerText = "PR opened";
             break;
             
         case "ready_for_review":
             title = `PR ${prNumber} ready for review`;
             description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "The PR was marked ready for review on ";
+            footerText = "PR marked ready for review";
             break;
             
         case "reopened":
             title = `PR ${prNumber} reopened`;
             description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "The PR was reopened on ";
+            footerText = "PR reopened";
             break;
             
         case "synchronize":
             title = `PR ${prNumber} synchronized`;
             description = `<@&1301093445951164498>\nThe PR ${prNumber} from ${author} is ready for review.\n`;
-            footerText = "The PR was synchronized on ";
+            footerText = "PR synchronized";
             break;
             
         case "review_requested":
             // For review_requested, we need the requested reviewer info
-            const reviewerName = requestedReviewer?.login || 'someone';
+            // Log the requested reviewer data for debugging
+            console.log(`Requested reviewer data:`, JSON.stringify(requestedReviewer));
+            
+            let reviewerName = 'someone';
+            if (requestedReviewer && requestedReviewer.login) {
+                reviewerName = requestedReviewer.login;
+            } else {
+                console.warn(`Missing or invalid requested reviewer data for PR ${prNumber}`);
+            }
+            
             title = `PR ${prNumber} review requested`;
             description = `<@&1301093445951164498>\n${author} has requested ${reviewerName} to review his PR ${prNumber}.\n`;
-            footerText = "The PR was review requested on ";
+            footerText = "Review requested";
             break;
             
         default:
