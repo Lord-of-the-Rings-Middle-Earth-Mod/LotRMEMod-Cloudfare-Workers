@@ -51,9 +51,13 @@ export const WEBHOOKS = {
   changelog: "https://discord.com/api/webhooks/...",   // Release changelog details  
   suggestions: "https://discord.com/api/webhooks/...", // GitHub suggestions
   fabricblog: "https://discord.com/api/webhooks/...",  // Fabric RSS updates
-  mails: "https://discord.com/api/webhooks/..."        // Email forwarding
+  mails: "https://discord.com/api/webhooks/...",       // Email forwarding
+  issues: "https://discord.com/api/webhooks/...",      // GitHub issues
+  prs: "https://discord.com/api/webhooks/..."          // GitHub pull requests
 };
 ```
+
+**⚠️ Important:** All webhook URLs must be replaced with actual Discord webhook URLs from your Discord server settings. URLs containing "PLACEHOLDER" will cause API errors.
 
 ### Role Pings
 
