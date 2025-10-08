@@ -1,6 +1,6 @@
 # Node.js-Abhängigkeiten
 node_modules/
-package-lock.json
+# package-lock.json should be committed for reproducible builds
 pnpm-lock.yaml
 yarn.lock
 
