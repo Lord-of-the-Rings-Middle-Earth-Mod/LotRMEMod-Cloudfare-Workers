@@ -253,10 +253,11 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
     }
     
     // Filter based on draft status and action
-    // We only notify for: opened (non-draft), ready_for_review, review_requested, reopened (non-draft), synchronize (non-draft)
+    // We only notify for: opened (non-draft), ready_for_review, reopened (non-draft), synchronize (non-draft)
+    // Review requests on draft PRs should be ignored
     const isDraft = pullRequest.draft;
     
-    if ((action === "opened" || action === "reopened" || action === "synchronize") && isDraft) {
+    if ((action === "opened" || action === "reopened" || action === "synchronize" || action === "review_requested") && isDraft) {
         console.log(`Ignoring ${action} action for draft PR #${pullRequest.number}`);
         return new Response("Ignored - draft PR", { status: 200 });
     }
