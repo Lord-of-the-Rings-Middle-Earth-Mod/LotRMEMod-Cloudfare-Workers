@@ -55,6 +55,7 @@ npm run test:watch
 Tests run automatically on:
 - Push to `main` branch
 - Pull requests to `main` branch
+- Nightly at 2:00 AM European Time (1:00 AM UTC)
 
 ## Test Framework
 
