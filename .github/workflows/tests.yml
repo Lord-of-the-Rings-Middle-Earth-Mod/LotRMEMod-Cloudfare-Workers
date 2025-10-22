@@ -16,12 +16,9 @@ jobs:
     # Skip tests for draft PRs on opened/synchronize events
     # Run tests for: push to main, ready_for_review, review_requested, or non-draft PRs
     if: >
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event.action == 'ready_for_review' ||
-      github.event.action == 'review_requested' ||
-      (github.event.action == 'opened' && github.event.pull_request.draft == false) ||
-      (github.event.action == 'synchronize' && github.event.pull_request.draft == false)
+     github.event_name == 'push' ||
+     github.event_name == 'schedule' ||
+     (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
     
     strategy:
       matrix:
