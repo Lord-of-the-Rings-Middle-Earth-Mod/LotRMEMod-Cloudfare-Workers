@@ -562,7 +562,7 @@ describe('GitHub Module', () => {
             embeds: expect.arrayContaining([
               expect.objectContaining({
                 title: 'New Project-Wiki Changes',
-                description: expect.stringContaining('wikiuser** has made following changes to the Wiki:')
+                description: expect.stringContaining('wikiuser** has made the following changes to the Wiki:')
               })
             ])
           })

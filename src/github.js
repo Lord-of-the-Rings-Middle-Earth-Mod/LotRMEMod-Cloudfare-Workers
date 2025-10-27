@@ -47,7 +47,7 @@ async function handleWiki(pages, sender) {
     console.log(`Processing GitHub wiki update by ${author} with ${pages.length} page(s) changed`);
 
     // Build description with list of all changes
-    let description = `**${author}** has made following changes to the Wiki:\n`;
+    let description = `**${author}** has made the following changes to the Wiki:\n`;
     
     pages.forEach(page => {
         const pageTitle = page.title || page.page_name;

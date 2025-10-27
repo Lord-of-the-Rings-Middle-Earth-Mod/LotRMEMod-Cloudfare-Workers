@@ -65,7 +65,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
     - "Home" button linking to wiki home page
     - Individual buttons for each edited or created page (up to 4 additional buttons)
     - Maximum of 5 buttons total per message (Discord limitation)
-  - **Button Labels**: Automatically truncated to 80 characters for long page titles
+  - **Button Labels**: Automatically truncated to 80 characters (77 + "...") for long page titles
   - **Multiple Changes**: Single message includes all page changes from a single wiki update event
 
 ### Pull Requests
@@ -123,7 +123,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
   "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
   "embeds": [{
     "title": "New Project-Wiki Changes",
-    "description": "**{author}** has made following changes to the Wiki:\n- {page_title} has been {action}\n- {page_title_2} has been {action_2}\n...",
+    "description": "**{author}** has made the following changes to the Wiki:\n- {page_title} has been {action}\n- {page_title_2} has been {action_2}\n...",
     "color": 1190012,
     "timestamp": "ISO Date",
     "footer": { "text": "This post originates from GitHub." }
