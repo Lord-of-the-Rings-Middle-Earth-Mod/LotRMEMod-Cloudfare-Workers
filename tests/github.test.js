@@ -12,7 +12,8 @@ vi.mock('../src/config.js', () => ({
     changelog: 'https://discord.com/api/webhooks/123/changelog',
     suggestions: 'https://discord.com/api/webhooks/123/suggestions',
     issues: 'https://discord.com/api/webhooks/123/issues',
-    prs: 'https://discord.com/api/webhooks/123/prs'
+    prs: 'https://discord.com/api/webhooks/123/prs',
+    wiki: 'https://discord.com/api/webhooks/123/wiki'
   },
   PINGS: {
     news: '<@&111>',
@@ -505,6 +506,257 @@ describe('GitHub Module', () => {
           json: vi.fn().mockResolvedValue({
             action: 'opened',
             pull_request: null
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe('Ignored');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Wiki handling', () => {
+      const baseSender = {
+        login: 'wikiuser',
+        id: 1
+      };
+
+      it('should handle wiki events with multiple page changes', async () => {
+        const pages = [
+          {
+            page_name: 'Home',
+            title: 'Home',
+            action: 'edited',
+            html_url: 'https://github.com/test/test/wiki/Home'
+          },
+          {
+            page_name: 'Special',
+            title: 'Special',
+            action: 'deleted',
+            html_url: 'https://github.com/test/test/wiki/Special'
+          },
+          {
+            page_name: 'Special-2',
+            title: 'Special 2',
+            action: 'created',
+            html_url: 'https://github.com/test/test/wiki/Special-2'
+          }
+        ];
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: pages,
+            sender: baseSender
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/wiki',
+          expect.objectContaining({
+            username: 'GitHub Wiki',
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: 'New Project-Wiki Changes',
+                description: expect.stringContaining('wikiuser** has made the following changes to the Wiki:')
+              })
+            ])
+          })
+        );
+
+        // Check that description includes all page changes
+        const call = postToDiscord.mock.calls[0][1];
+        const description = call.embeds[0].description;
+        expect(description).toContain('Home has been edited');
+        expect(description).toContain('Special has been deleted');
+        expect(description).toContain('Special 2 has been created');
+      });
+
+      it('should include buttons for edited and created pages', async () => {
+        const pages = [
+          {
+            page_name: 'Page1',
+            title: 'Page 1',
+            action: 'edited',
+            html_url: 'https://github.com/test/test/wiki/Page1'
+          },
+          {
+            page_name: 'Page2',
+            title: 'Page 2',
+            action: 'created',
+            html_url: 'https://github.com/test/test/wiki/Page2'
+          },
+          {
+            page_name: 'Page3',
+            title: 'Page 3',
+            action: 'deleted',
+            html_url: 'https://github.com/test/test/wiki/Page3'
+          }
+        ];
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: pages,
+            sender: baseSender
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        const components = call.components[0].components;
+        
+        // Should have Home button plus 2 buttons for edited and created pages
+        expect(components.length).toBe(3);
+        expect(components[0].label).toBe('Home');
+        expect(components[1].label).toBe('Page 1');
+        expect(components[2].label).toBe('Page 2');
+        
+        // Deleted page should not have a button
+        expect(components.find(c => c.label === 'Page 3')).toBeUndefined();
+      });
+
+      it('should handle single page wiki change', async () => {
+        const pages = [
+          {
+            page_name: 'Documentation',
+            title: 'Documentation',
+            action: 'edited',
+            html_url: 'https://github.com/test/test/wiki/Documentation'
+          }
+        ];
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: pages,
+            sender: baseSender
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/wiki',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                description: expect.stringContaining('Documentation has been edited')
+              })
+            ])
+          })
+        );
+      });
+
+      it('should limit buttons to 5 maximum', async () => {
+        const pages = Array.from({ length: 10 }, (_, i) => ({
+          page_name: `Page${i}`,
+          title: `Page ${i}`,
+          action: 'edited',
+          html_url: `https://github.com/test/test/wiki/Page${i}`
+        }));
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: pages,
+            sender: baseSender
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        const components = call.components[0].components;
+        
+        // Should be limited to 5 buttons (Home + 4 page buttons)
+        expect(components.length).toBe(5);
+      });
+
+      it('should truncate long page titles in buttons', async () => {
+        const longTitle = 'A'.repeat(100);
+        const pages = [
+          {
+            page_name: 'LongTitlePage',
+            title: longTitle,
+            action: 'created',
+            html_url: 'https://github.com/test/test/wiki/LongTitlePage'
+          }
+        ];
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: pages,
+            sender: baseSender
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        const components = call.components[0].components;
+        
+        // Check that long title is truncated in button
+        const pageButton = components.find(c => c.label.startsWith('A'));
+        expect(pageButton.label.length).toBeLessThanOrEqual(80);
+        expect(pageButton.label).toMatch(/\.\.\.$/);
+      });
+
+      it('should handle missing sender gracefully', async () => {
+        const pages = [
+          {
+            page_name: 'Home',
+            title: 'Home',
+            action: 'edited',
+            html_url: 'https://github.com/test/test/wiki/Home'
+          }
+        ];
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: pages,
+            sender: null
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        const description = call.embeds[0].description;
+        expect(description).toContain('Unknown User');
+      });
+
+      it('should handle empty pages array', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: [],
+            sender: baseSender
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(400);
+        expect(await result.text()).toBe('Invalid wiki data');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should handle missing pages field gracefully', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            pages: null,
+            sender: baseSender
           })
         };
 

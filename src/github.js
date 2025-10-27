@@ -4,6 +4,10 @@ import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; //
 export async function handleGitHubWebhook(request) {
     const data = await request.json();
 
+    // If it's a wiki event, handle it
+    if (data.pages && Array.isArray(data.pages)) {
+        return handleWiki(data.pages, data.sender);
+    }
     // If it's a discussion, handle it
     if (data.discussion) {
         // We only handle 'created' action for discussions
@@ -30,6 +34,73 @@ export async function handleGitHubWebhook(request) {
     }
 
     return new Response("Ignored", { status: 200 });
+}
+
+// Function to handle GitHub Wiki events
+async function handleWiki(pages, sender) {
+    if (!pages || pages.length === 0) {
+        console.error('handleWiki called with no pages');
+        return new Response("Invalid wiki data", { status: 400 });
+    }
+
+    const author = sender?.login || 'Unknown User';
+    console.log(`Processing GitHub wiki update by ${author} with ${pages.length} page(s) changed`);
+
+    // Build description with list of all changes
+    let description = `**${author}** has made the following changes to the Wiki:\n`;
+    
+    pages.forEach(page => {
+        const pageTitle = page.title || page.page_name;
+        const action = page.action;
+        description += `- ${pageTitle} has been ${action}\n`;
+    });
+
+    // Build components with buttons for edited and created pages
+    const buttonComponents = [];
+    
+    // Add Home button (link to wiki home)
+    buttonComponents.push({
+        type: 2, // Button
+        style: 5, // Link style
+        label: "Home",
+        url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/wiki"
+    });
+
+    // Add buttons for edited and created pages (max 5 buttons per action row in Discord)
+    pages.forEach(page => {
+        if ((page.action === 'edited' || page.action === 'created') && buttonComponents.length < 5) {
+            const pageTitle = page.title || page.page_name;
+            buttonComponents.push({
+                type: 2, // Button
+                style: 5, // Link style
+                label: pageTitle.length > 80 ? pageTitle.substring(0, 77) + '...' : pageTitle,
+                url: page.html_url
+            });
+        }
+    });
+
+    // Create the Discord payload
+    const payload = {
+        username: "GitHub Wiki",
+        avatar_url: AVATAR_URL,
+        embeds: [
+            {
+                title: "New Project-Wiki Changes",
+                description: description,
+                color: 1190012,
+                timestamp: new Date().toISOString(),
+                footer: { text: FOOTER_TEXT }
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: buttonComponents
+            }
+        ]
+    };
+
+    return postToDiscord(WEBHOOKS.wiki, payload);
 }
 
 // Function to handle GitHub Discussions (Announcements, Suggestions, etc.)

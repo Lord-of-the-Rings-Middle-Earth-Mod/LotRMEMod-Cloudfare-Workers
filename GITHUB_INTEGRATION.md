@@ -4,9 +4,10 @@ This module implements automatic GitHub webhook processing and Discord integrati
 
 ## Features
 
-- **Webhook Processing**: Handles GitHub webhooks for discussions and releases
+- **Webhook Processing**: Handles GitHub webhooks for discussions, releases, issues, pull requests, and wiki changes
 - **Discussion Routing**: Routes announcements and suggestions to appropriate Discord channels
 - **Release Management**: Automatically posts release announcements to news and changelog channels
+- **Wiki Change Notifications**: Sends formatted summaries of wiki page edits, creations, and deletions to Discord
 - **Role Pinging**: Automatically pings relevant roles based on content and labels
 - **Thread Support**: Creates threads for suggestions to organize discussions
 - **Interactive Buttons**: Adds clickable buttons to messages for quick navigation to GitHub and Discord channels
@@ -22,13 +23,14 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **WEBHOOKS.changelog** for detailed release notes
 - **WEBHOOKS.issues** for new GitHub issues
 - **WEBHOOKS.prs** for pull request notifications ⚠️ **REQUIRED**
+- **WEBHOOKS.wiki** for wiki change notifications
 
 **Important:** Replace placeholder URLs with actual Discord webhook URLs from your server settings. URLs containing "PLACEHOLDER" will cause 405 Method Not Allowed errors.
 
 ### GitHub Webhook Setup
 
 - **GitHub Webhooks**: Configure webhook in your repository settings to point to the `/github` endpoint
-- **Events**: Enable webhook for discussions, releases, issues, and pull requests
+- **Events**: Enable webhook for discussions, releases, issues, pull requests, and wiki
 - **Content Type**: Set to `application/json`
 
 ### Additional Configuration
@@ -42,12 +44,29 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **Endpoint**: `POST /github`
 - **Handler**: `handleGitHubWebhook()` function in `github.js`
 - **Supported Events**: 
+  - Wiki page changes (created, edited, deleted)
   - Discussion created (announcements, suggestions)
   - Release published
   - Issue opened
   - Pull request events (opened, ready_for_review, review_requested, reopened, synchronize)
 
 ## Supported GitHub Events
+
+### Wiki Changes
+- **Wiki Page Events**:
+  - Routes to wiki channel with formatted summary of all changes
+  - Username: "GitHub Wiki"
+  - Displays list of all page changes with their actions (created, edited, deleted)
+  - **Supported Actions**:
+    - `created` - New wiki pages
+    - `edited` - Modified wiki pages  
+    - `deleted` - Removed wiki pages
+  - **Interactive Buttons**:
+    - "Home" button linking to wiki home page
+    - Individual buttons for each edited or created page (up to 4 additional buttons)
+    - Maximum of 5 buttons total per message (Discord limitation)
+  - **Button Labels**: Automatically truncated to 80 characters (77 + "...") for long page titles
+  - **Multiple Changes**: Single message includes all page changes from a single wiki update event
 
 ### Pull Requests
 - **Pull Request Events**:
@@ -96,6 +115,39 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **Interactive Buttons**: News channel includes buttons for quick access to changelog Discord channel and GitHub release
 
 ## Message Format
+
+### Wiki Change Messages
+```json
+{
+  "username": "GitHub Wiki",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "embeds": [{
+    "title": "New Project-Wiki Changes",
+    "description": "**{author}** has made the following changes to the Wiki:\n- {page_title} has been {action}\n- {page_title_2} has been {action_2}\n...",
+    "color": 1190012,
+    "timestamp": "ISO Date",
+    "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [
+      {
+        "type": 2,
+        "style": 5,
+        "label": "Home",
+        "url": "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/wiki"
+      },
+      {
+        "type": 2,
+        "style": 5,
+        "label": "{page_title}",
+        "url": "{page.html_url}"
+      }
+      // Additional buttons for edited/created pages (max 4 more)
+    ]
+  }]
+}
+```
 
 ### Pull Request Messages
 
@@ -283,17 +335,21 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 To test the GitHub integration:
 
 1. **GitHub Webhook**: Configure webhook in repository settings to point to `/github` endpoint
-2. **Issue Test**: Create a new issue in the repository
-3. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
-4. **Release Test**: Publish a new release in the repository
-5. **Pull Request Tests**: 
+2. **Wiki Test**: 
+   - Create, edit, or delete a wiki page - should post notification with list of changes
+   - Create multiple wiki pages in one session - should show all changes in one message
+   - Verify buttons are created for edited and created pages
+3. **Issue Test**: Create a new issue in the repository
+4. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
+5. **Release Test**: Publish a new release in the repository
+6. **Pull Request Tests**: 
    - Open a new PR (non-draft) - should post notification
    - Open a draft PR - should be ignored
    - Convert draft to ready for review - should post notification
    - Request review from someone - should post notification
    - Push new commits to existing PR - should post notification (if non-draft)
-6. **Check Logs**: Monitor Cloudflare Worker logs for processing status
-7. **Verify Discord**: Check the configured Discord channels for new messages
+7. **Check Logs**: Monitor Cloudflare Worker logs for processing status
+8. **Verify Discord**: Check the configured Discord channels for new messages
 
 ## Files Modified
 
