@@ -14,7 +14,9 @@ export const PINGS = {
   news: "<@&1297538431001432135>",
   monthly: "<@&1346200306911940639>",
   release: "<@&1297543002222493761>",
-  fabricupdates: "<@&1371820347543916554>"
+  fabricupdates: "<@&1371820347543916554>",
+  maintainers: "<@&1301093445951164498>", // For PRs from forks (first-time contributors)
+  contributors: "<@&1301093445951164498>" // For PRs from branches (existing team members)
 };
 
 // Discord tags for specific post types
