@@ -15,6 +15,8 @@ export const PINGS = {
   monthly: "<@&1346200306911940639>",
   release: "<@&1297543002222493761>",
   fabricupdates: "<@&1371820347543916554>",
+  // Note: Both are currently set to the same role ID. Update contributors to a different role ID
+  // if you want to differentiate between maintainer reviews (for fork PRs) and contributor reviews (for branch PRs)
   maintainers: "<@&1301093445951164498>", // For PRs from forks (first-time contributors)
   contributors: "<@&1301093445951164498>" // For PRs from branches (existing team members)
 };
