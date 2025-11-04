@@ -36,6 +36,11 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 ### Additional Configuration
 
 - **Role Pings**: Configured in `config.js` as `PINGS` object
+  - `PINGS.maintainers`: Role to ping for PRs from forks (first-time contributors)
+  - `PINGS.contributors`: Role to ping for PRs from branches (existing team members)
+  - `PINGS.news`: Role to ping for announcements
+  - `PINGS.monthly`: Role to ping for monthly update announcements
+  - `PINGS.release`: Role to ping for new releases
 - **Avatar**: Uses `AVATAR_URL` from config for consistent branding
 
 ## Endpoints
@@ -70,7 +75,10 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 
 ### Pull Requests
 - **Pull Request Events**:
-  - Routes to PRs channel with contributor role ping
+  - Routes to PRs channel with appropriate role ping based on PR source
+  - **Fork Detection**: Automatically detects if PR is from a fork or a branch
+    - PRs from **forks** ping maintainers (for first-time contributors who need proper onboarding)
+    - PRs from **branches** ping contributors (for existing team members)
   - Username: "Lotr ME Mod PRs"  
   - Includes "PR on GitHub" button linking to the specific PR
   - **Supported Actions**:
