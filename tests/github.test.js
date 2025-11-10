@@ -18,7 +18,9 @@ vi.mock('../src/config.js', () => ({
   PINGS: {
     news: '<@&111>',
     monthly: '<@&222>',
-    release: '<@&333>'
+    release: '<@&333>',
+    maintainers: '<@&444>',
+    contributors: '<@&555>'
   },
   TAGS: {
     suggestions: '1283842398308532256'
@@ -361,22 +363,47 @@ describe('GitHub Module', () => {
     });
 
     describe('Pull Request handling', () => {
-      const basePR = {
+      // PR from a branch within the same repo (contributor)
+      const branchPR = {
         number: 123,
         title: 'Test PR',
         body: 'This is a test PR',
         html_url: 'https://github.com/test/test/pull/123',
         user: { login: 'testuser' },
         draft: false,
-        head: { ref: 'feature-branch' },
-        base: { ref: 'main' }
+        head: { 
+          ref: 'feature-branch',
+          repo: { id: 456, fork: false }
+        },
+        base: { 
+          ref: 'main',
+          repo: { id: 456, fork: false }
+        }
+      };
+      
+      // PR from a fork (first-time contributor / maintainer review)
+      const forkPR = {
+        number: 124,
+        title: 'Test Fork PR',
+        body: 'This is a PR from a fork',
+        html_url: 'https://github.com/test/test/pull/124',
+        user: { login: 'forkuser' },
+        draft: false,
+        head: { 
+          ref: 'feature-branch',
+          repo: { id: 789, fork: true }
+        },
+        base: { 
+          ref: 'main',
+          repo: { id: 456, fork: false }
+        }
       };
 
-      it('should handle opened non-draft PRs', async () => {
+      it('should handle opened non-draft PRs from a branch with contributor ping', async () => {
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'opened',
-            pull_request: basePR
+            pull_request: branchPR
           })
         };
 
@@ -390,7 +417,32 @@ describe('GitHub Module', () => {
             embeds: expect.arrayContaining([
               expect.objectContaining({
                 title: 'PR 123 opened: Test PR',
-                description: expect.stringContaining('testuser** has opened a new pull request')
+                description: expect.stringContaining('<@&555>') // contributors ping
+              })
+            ])
+          })
+        );
+      });
+
+      it('should handle opened non-draft PRs from a fork with maintainer ping', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            pull_request: forkPR
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/prs',
+          expect.objectContaining({
+            username: 'LotR ME Mod PRs',
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: 'PR 124 opened: Test Fork PR',
+                description: expect.stringContaining('<@&444>') // maintainers ping
               })
             ])
           })
@@ -398,7 +450,7 @@ describe('GitHub Module', () => {
       });
 
       it('should ignore draft PRs for opened action', async () => {
-        const draftPR = { ...basePR, draft: true };
+        const draftPR = { ...branchPR, draft: true };
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'opened',
@@ -413,11 +465,11 @@ describe('GitHub Module', () => {
         expect(postToDiscord).not.toHaveBeenCalled();
       });
 
-      it('should handle ready_for_review action', async () => {
+      it('should handle ready_for_review action from branch', async () => {
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'ready_for_review',
-            pull_request: basePR
+            pull_request: branchPR
           })
         };
 
@@ -430,18 +482,42 @@ describe('GitHub Module', () => {
             embeds: expect.arrayContaining([
               expect.objectContaining({
                 title: 'PR 123 ready for review: Test PR',
-                description: expect.stringContaining('marked their pull request as ready for review')
+                description: expect.stringContaining('<@&555>') // contributors ping
               })
             ])
           })
         );
       });
 
-      it('should handle review_requested action', async () => {
+      it('should handle ready_for_review action from fork', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'ready_for_review',
+            pull_request: forkPR
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/prs',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: 'PR 124 ready for review: Test Fork PR',
+                description: expect.stringContaining('<@&444>') // maintainers ping
+              })
+            ])
+          })
+        );
+      });
+
+      it('should handle review_requested action from branch', async () => {
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'review_requested',
-            pull_request: basePR,
+            pull_request: branchPR,
             requested_reviewer: { login: 'reviewer' }
           })
         };
@@ -455,7 +531,32 @@ describe('GitHub Module', () => {
             embeds: expect.arrayContaining([
               expect.objectContaining({
                 title: 'PR 123 review requested: Test PR',
-                description: expect.stringContaining('requested **reviewer** to review')
+                description: expect.stringContaining('<@&555>') // contributors ping
+              })
+            ])
+          })
+        );
+      });
+
+      it('should handle review_requested action from fork', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'review_requested',
+            pull_request: forkPR,
+            requested_reviewer: { login: 'reviewer' }
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/prs',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: 'PR 124 review requested: Test Fork PR',
+                description: expect.stringContaining('<@&444>') // maintainers ping
               })
             ])
           })
@@ -466,7 +567,7 @@ describe('GitHub Module', () => {
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'review_requested',
-            pull_request: basePR,
+            pull_request: branchPR,
             requested_reviewer: null
           })
         };
@@ -490,7 +591,7 @@ describe('GitHub Module', () => {
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'closed',
-            pull_request: basePR
+            pull_request: branchPR
           })
         };
 
