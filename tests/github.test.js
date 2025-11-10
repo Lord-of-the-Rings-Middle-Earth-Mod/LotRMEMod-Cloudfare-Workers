@@ -868,5 +868,148 @@ describe('GitHub Module', () => {
         expect(postToDiscord).not.toHaveBeenCalled();
       });
     });
+
+    describe('Fork handling', () => {
+      const baseFork = {
+        html_url: 'https://github.com/forker/test-fork',
+        full_name: 'forker/test-fork',
+        name: 'test-fork'
+      };
+
+      const baseRepository = {
+        full_name: 'Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod',
+        name: 'Lord-of-the-Rings-Middle-Earth-Mod'
+      };
+
+      const baseSender = {
+        login: 'forker',
+        id: 1
+      };
+
+      it('should handle fork events', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            forkee: baseFork,
+            sender: baseSender,
+            repository: baseRepository
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/issues',
+          expect.objectContaining({
+            username: 'LotR ME Mod GitHub',
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                author: { name: 'LotR ME Mod GitHub' },
+                title: 'New Fork',
+                description: '**forker** created a new fork for the **Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod**.'
+              })
+            ]),
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                type: 1,
+                components: expect.arrayContaining([
+                  expect.objectContaining({
+                    type: 2,
+                    style: 5,
+                    label: 'Fork on GitHub',
+                    url: 'https://github.com/forker/test-fork'
+                  })
+                ])
+              })
+            ])
+          })
+        );
+      });
+
+      it('should handle fork events with missing sender gracefully', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            forkee: baseFork,
+            sender: null,
+            repository: baseRepository
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        const description = call.embeds[0].description;
+        expect(description).toContain('Unknown User');
+      });
+
+      it('should ignore invalid fork data', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            forkee: null,
+            sender: baseSender,
+            repository: baseRepository
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe('Ignored');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should ignore missing repository data', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            forkee: baseFork,
+            sender: baseSender,
+            repository: null
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe('Ignored');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should include footer text and timestamp', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            forkee: baseFork,
+            sender: baseSender,
+            repository: baseRepository
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.embeds[0].footer.text).toBe('This post originates from GitHub.');
+        expect(call.embeds[0].timestamp).toBeDefined();
+      });
+
+      it('should use AVATAR_URL from config', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            forkee: baseFork,
+            sender: baseSender,
+            repository: baseRepository
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.avatar_url).toBe('https://gravatar.com/test.jpeg');
+      });
+    });
   });
 });

@@ -32,6 +32,10 @@ export async function handleGitHubWebhook(request) {
         }
         return new Response("Ignored", { status: 200 });
     }
+    // If it's a fork event, handle it
+    else if (data.forkee && data.repository) {
+        return handleFork(data.forkee, data.sender, data.repository);
+    }
 
     return new Response("Ignored", { status: 200 });
 }
@@ -450,4 +454,53 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
     };
 
     return postToDiscord(WEBHOOKS.prs, payload);
+}
+
+// Function to handle GitHub Fork events
+async function handleFork(forkee, sender, repository) {
+    if (!forkee || !repository) {
+        console.error('handleFork called with invalid data');
+        return new Response("Invalid fork data", { status: 400 });
+    }
+    
+    const username = sender?.login || 'Unknown User';
+    const repoName = repository.full_name || repository.name || 'the repository';
+    const forkUrl = forkee.html_url;
+    
+    console.log(`Processing GitHub fork by ${username} - ${forkUrl}`);
+    
+    // Create the Discord payload
+    const payload = {
+        username: "LotR ME Mod GitHub",
+        avatar_url: AVATAR_URL,
+        embeds: [
+            {
+                author: {
+                    name: "LotR ME Mod GitHub"
+                },
+                title: "New Fork",
+                description: `**${username}** created a new fork for the **${repoName}**.`,
+                color: 1190012,
+                timestamp: new Date().toISOString(),
+                footer: {
+                    text: FOOTER_TEXT
+                }
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "Fork on GitHub",
+                        url: forkUrl
+                    }
+                ]
+            }
+        ]
+    };
+    
+    return postToDiscord(WEBHOOKS.issues, payload);
 }
