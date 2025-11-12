@@ -9,7 +9,7 @@ Test Coverage
 
 The worker provides the following major functionalities:
 
-- **[GitHub Integration](GITHUB_INTEGRATION.md)** - Automatically posts GitHub discussions and releases to Discord
+- **[GitHub Integration](GITHUB_INTEGRATION.md)** - Automatically posts GitHub events (forks, wiki changes, discussions, releases, issues, pull requests) to Discord
 - **[RSS Integration](RSS_INTEGRATION.md)** - Monitors Fabric MC blog RSS feed and posts complete content to Discord using multi-message threads  
 - **[Mail Integration](MAIL_INTEGRATION.md)** - Forwards emails to Discord channels
 - **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality with multi-message thread support used by all modules
@@ -34,7 +34,7 @@ src/
 
 The worker exposes the following HTTP endpoints:
 
-- `POST /github` - GitHub webhook receiver for discussions and releases
+- `POST /github` - GitHub webhook receiver for repository events (forks, wiki changes, discussions, releases, issues, pull requests)
 - `POST /mails` - Email forwarding endpoint  
 - `POST /rss` - Manual RSS feed processing trigger
 
