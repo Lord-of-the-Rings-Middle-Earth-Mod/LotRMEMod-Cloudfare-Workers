@@ -2,7 +2,7 @@
 
 ## Test Maintenance Guidelines
 
-This repository maintains a comprehensive test suite with **95 tests** and **92.82% coverage**. All code changes must maintain or improve test coverage to keep the codebase reliable and maintainable.
+This repository maintains a comprehensive test suite with **112 tests** and **93.4% coverage**. All code changes must maintain or improve test coverage to keep the codebase reliable and maintainable.
 
 ### 🚨 CRITICAL: Test Requirements for All Changes
 
@@ -22,7 +22,7 @@ This repository maintains a comprehensive test suite with **95 tests** and **92.
 
 #### 3. Test Coverage Requirements
 - **Maintain minimum 80% coverage** across all metrics (statements, branches, functions, lines)
-- **Current coverage is 92.82%** - do not let it drop below this level
+- **Current coverage is 93.4%** - do not let it drop below this level
 - **Coverage is enforced in CI/CD** and will fail builds if thresholds aren't met
 
 ## Test File Organization
@@ -33,7 +33,7 @@ tests/
 ├── config.test.js      # Configuration constants and validation (8 tests)
 ├── kvutils.test.js     # KV storage utility functions (13 tests)  
 ├── discord.test.js     # Discord API integration with mocks (11 tests)
-├── github.test.js      # GitHub webhook handling with mocks (19 tests)
+├── github.test.js      # GitHub webhook handling with mocks (36 tests)
 ├── rss.test.js         # RSS feed processing with mocks (13 tests)
 ├── mails.test.js       # Email handling functionality (12 tests)
 ├── index.test.js       # Worker endpoints and routing (19 tests)

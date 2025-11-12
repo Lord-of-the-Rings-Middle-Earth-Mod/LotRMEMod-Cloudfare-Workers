@@ -21,7 +21,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **WEBHOOKS.news** for announcements and releases
 - **WEBHOOKS.suggestions** for ideas and suggestions  
 - **WEBHOOKS.changelog** for detailed release notes
-- **WEBHOOKS.issues** for new GitHub issues
+- **WEBHOOKS.issues** for new GitHub issues and fork notifications
 - **WEBHOOKS.prs** for pull request notifications ⚠️ **REQUIRED**
 - **WEBHOOKS.wiki** for wiki change notifications
 
@@ -49,6 +49,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **Endpoint**: `POST /github`
 - **Handler**: `handleGitHubWebhook()` function in `github.js`
 - **Supported Events**: 
+  - Repository fork
   - Wiki page changes (created, edited, deleted)
   - Discussion created (announcements, suggestions)
   - Release published
@@ -56,6 +57,14 @@ Before the integration can work, you must configure valid Discord webhook URLs i
   - Pull request events (opened, ready_for_review, review_requested, reopened, synchronize)
 
 ## Supported GitHub Events
+
+### Fork Events
+- **Repository Fork Events**:
+  - Routes to issues channel with fork notification
+  - Username: "LotR ME Mod GitHub"
+  - Displays fork creator's username and repository details
+  - Includes "Fork on GitHub" button linking to the new fork
+  - Only processes `fork` action events
 
 ### Wiki Changes
 - **Wiki Page Events**:
@@ -123,6 +132,33 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **Interactive Buttons**: News channel includes buttons for quick access to changelog Discord channel and GitHub release
 
 ## Message Format
+
+### Fork Messages
+```json
+{
+  "username": "LotR ME Mod GitHub",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "embeds": [{
+    "author": {
+      "name": "LotR ME Mod GitHub"
+    },
+    "title": "New Fork",
+    "description": "**{username}** created a new fork for the **{repository}**.",
+    "color": 1190012,
+    "timestamp": "ISO Date",
+    "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "Fork on GitHub",
+      "url": "{forkee.html_url}"
+    }]
+  }]
+}
+```
 
 ### Wiki Change Messages
 ```json
@@ -343,7 +379,8 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 To test the GitHub integration:
 
 1. **GitHub Webhook**: Configure webhook in repository settings to point to `/github` endpoint
-2. **Wiki Test**: 
+2. **Fork Test**: Fork the repository - should post notification to issues channel
+3. **Wiki Test**: 
    - Create, edit, or delete a wiki page - should post notification with list of changes
    - Create multiple wiki pages in one session - should show all changes in one message
    - Verify buttons are created for edited and created pages
