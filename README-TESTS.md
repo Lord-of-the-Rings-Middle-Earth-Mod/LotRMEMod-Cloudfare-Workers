@@ -6,7 +6,8 @@ Complete automated test suite for the Cloudflare Workers project, designed to ru
 
 ## Features
 
-- ✅ **Comprehensive Coverage**: 92.82% statement coverage, exceeding the 80% target
+- ✅ **Comprehensive Coverage**: 93.4% statement coverage, exceeding the 80% target
+- ✅ **112 Total Tests**: All passing with comprehensive edge case coverage
 - ✅ **GitHub Actions Integration**: Runs automatically on every commit and PR
 - ✅ **Multiple Node.js Versions**: Tests on Node.js 18 & 20
 - ✅ **Security Checks**: Automated security auditing and secret scanning
@@ -22,9 +23,9 @@ Complete automated test suite for the Cloudflare Workers project, designed to ru
 | `tests/config.test.js` | Tests configuration constants and validation | 8 tests |
 | `tests/kvutils.test.js` | Tests KV storage utility functions | 13 tests |
 | `tests/discord.test.js` | Tests Discord API integration with mocks | 11 tests |
-| `tests/github.test.js` | Tests GitHub webhook handling with mocks | 19 tests |
+| `tests/github.test.js` | Tests GitHub webhook handling with mocks | 36 tests |
 | `tests/rss.test.js` | Tests RSS feed processing with mocks | 13 tests |
-| `tests/mails.test.js` | Tests email handling functionality | 16 tests |
+| `tests/mails.test.js` | Tests email handling functionality | 12 tests |
 
 ### Integration Tests
 
@@ -89,10 +90,10 @@ Tests run automatically on:
 ## Coverage Thresholds
 
 Current coverage targets (minimum 80%):
-- **Statements**: 92.82% ✅
-- **Branches**: 84.11% ✅
+- **Statements**: 93.4% ✅
+- **Branches**: 84.23% ✅
 - **Functions**: 100% ✅
-- **Lines**: 92.82% ✅
+- **Lines**: 93.4% ✅
 
 ## GitHub Actions Workflow
 
