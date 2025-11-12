@@ -22,7 +22,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **WEBHOOKS.suggestions** for ideas and suggestions  
 - **WEBHOOKS.changelog** for detailed release notes
 - **WEBHOOKS.issues** for new GitHub issues and fork notifications
-- **WEBHOOKS.prs** for pull request notifications ⚠️ **REQUIRED**
+- **WEBHOOKS.prs** for pull request notifications
 - **WEBHOOKS.wiki** for wiki change notifications
 
 **Important:** Replace placeholder URLs with actual Discord webhook URLs from your server settings. URLs containing "PLACEHOLDER" will cause 405 Method Not Allowed errors.
