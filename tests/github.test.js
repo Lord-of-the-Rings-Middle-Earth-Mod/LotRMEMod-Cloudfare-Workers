@@ -13,7 +13,8 @@ vi.mock('../src/config.js', () => ({
     suggestions: 'https://discord.com/api/webhooks/123/suggestions',
     issues: 'https://discord.com/api/webhooks/123/issues',
     prs: 'https://discord.com/api/webhooks/123/prs',
-    wiki: 'https://discord.com/api/webhooks/123/wiki'
+    wiki: 'https://discord.com/api/webhooks/123/wiki',
+    workflows: 'https://discord.com/api/webhooks/123/workflows'
   },
   PINGS: {
     news: '<@&111>',
@@ -1000,6 +1001,233 @@ describe('GitHub Module', () => {
             forkee: baseFork,
             sender: baseSender,
             repository: baseRepository
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.avatar_url).toBe('https://gravatar.com/test.jpeg');
+      });
+    });
+
+    describe('Workflow run handling', () => {
+      const baseWorkflowRun = {
+        name: 'Test Suite',
+        status: 'completed',
+        conclusion: 'success',
+        html_url: 'https://github.com/test/test/actions/runs/123',
+        updated_at: '2024-01-01T00:00:00Z',
+        actor: {
+          login: 'testuser'
+        }
+      };
+
+      it('should handle successful workflow runs', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: baseWorkflowRun
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.objectContaining({
+            username: 'GitHub Actions',
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: '✅ Test Suite ran successfully',
+                description: expect.stringContaining('completed successfully'),
+                color: 3066993,
+                author: { name: 'testuser' }
+              })
+            ]),
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                type: 1,
+                components: expect.arrayContaining([
+                  expect.objectContaining({
+                    type: 2,
+                    style: 5,
+                    label: 'View Workflow Run',
+                    url: 'https://github.com/test/test/actions/runs/123'
+                  })
+                ])
+              })
+            ])
+          })
+        );
+      });
+
+      it('should handle failed workflow runs with maintainer ping', async () => {
+        const failedWorkflowRun = {
+          ...baseWorkflowRun,
+          conclusion: 'failure'
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: failedWorkflowRun
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.objectContaining({
+            username: 'GitHub Actions',
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: '❌ Test Suite failed',
+                color: 15158332
+              })
+            ])
+          })
+        );
+        
+        // Verify description contains maintainer ping and failure message
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.embeds[0].description).toContain('<@&444>');
+        expect(call.embeds[0].description).toContain('has failed');
+      });
+
+      it('should handle cancelled workflow runs', async () => {
+        const cancelledWorkflowRun = {
+          ...baseWorkflowRun,
+          conclusion: 'cancelled'
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: cancelledWorkflowRun
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: '🚫 Test Suite was cancelled',
+                color: 10197915
+              })
+            ])
+          })
+        );
+      });
+
+      it('should ignore skipped workflow runs', async () => {
+        const skippedWorkflowRun = {
+          ...baseWorkflowRun,
+          conclusion: 'skipped'
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: skippedWorkflowRun
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe('Ignored - workflow skipped');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should ignore non-completed workflow runs', async () => {
+        const inProgressWorkflowRun = {
+          ...baseWorkflowRun,
+          status: 'in_progress',
+          conclusion: null
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: inProgressWorkflowRun
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe('Ignored - workflow not completed');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should handle workflow runs without actor', async () => {
+        const workflowRunNoActor = {
+          ...baseWorkflowRun,
+          actor: undefined,
+          triggering_actor: undefined
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: workflowRunNoActor
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.embeds[0].author.name).toBe('Unknown User');
+      });
+
+      it('should ignore payload with null workflow run', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: null
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(await result.text()).toBe('Ignored');
+        expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should include footer and timestamp', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: baseWorkflowRun
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.embeds[0].footer.text).toBe('This post originates from GitHub.');
+        expect(call.embeds[0].timestamp).toBe('2024-01-01T00:00:00Z');
+      });
+
+      it('should use AVATAR_URL from config', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: baseWorkflowRun
           })
         };
 
