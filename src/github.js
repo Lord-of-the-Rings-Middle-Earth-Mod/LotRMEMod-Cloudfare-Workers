@@ -530,28 +530,25 @@ async function handleWorkflowRun(workflowRun) {
     console.log(`Processing GitHub workflow run: ${workflowName} - ${conclusion} by ${author}`);
     
     // Determine title and description based on conclusion
-    let title, description, color, shouldNotify;
+    let title, description, color;
     
     switch (conclusion) {
         case 'success':
             title = `✅ ${workflowName} ran successfully`;
             description = `The workflow **${workflowName}** completed successfully.\nYou can check out the results on GitHub.`;
             color = 3066993; // Green
-            shouldNotify = false; // Don't ping for success
             break;
             
         case 'failure':
             title = `❌ ${workflowName} failed`;
             description = `${PINGS.maintainers} The workflow **${workflowName}** has failed.\nPlease check the workflow run and address any issues.`;
             color = 15158332; // Red
-            shouldNotify = true; // Ping maintainers for failures
             break;
             
         case 'cancelled':
             title = `🚫 ${workflowName} was cancelled`;
             description = `The workflow **${workflowName}** was cancelled.\nYou can check out the details on GitHub.`;
             color = 10197915; // Gray
-            shouldNotify = false;
             break;
             
         case 'skipped':
@@ -563,7 +560,6 @@ async function handleWorkflowRun(workflowRun) {
             title = `⚠️ ${workflowName} completed with status: ${conclusion}`;
             description = `The workflow **${workflowName}** completed with an unusual status.\nYou can check out the results on GitHub.`;
             color = 16776960; // Yellow
-            shouldNotify = false;
             break;
     }
     

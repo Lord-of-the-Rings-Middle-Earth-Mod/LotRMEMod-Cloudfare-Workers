@@ -1088,13 +1088,16 @@ describe('GitHub Module', () => {
             embeds: expect.arrayContaining([
               expect.objectContaining({
                 title: '❌ Test Suite failed',
-                description: expect.stringContaining('<@&444>'),
-                description: expect.stringContaining('has failed'),
                 color: 15158332
               })
             ])
           })
         );
+        
+        // Verify description contains maintainer ping and failure message
+        const call = postToDiscord.mock.calls[0][1];
+        expect(call.embeds[0].description).toContain('<@&444>');
+        expect(call.embeds[0].description).toContain('has failed');
       });
 
       it('should handle cancelled workflow runs', async () => {
