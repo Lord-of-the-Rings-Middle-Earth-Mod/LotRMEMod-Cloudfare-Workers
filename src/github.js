@@ -16,6 +16,10 @@ export async function handleGitHubWebhook(request) {
         }
         return handleDiscussion(data.discussion);
     }
+    // If it's a workflow run, handle it
+    else if (data.workflow_run && data.action === "completed") {
+        return handleWorkflowRun(data.workflow_run);
+    }
     // If it's a release, handle it
     else if (data.release && data.action == "published") {
         return handleRelease(data.release);
@@ -503,4 +507,98 @@ async function handleFork(forkee, sender, repository) {
     };
     
     return postToDiscord(WEBHOOKS.issues, payload);
+}
+
+// Function to handle GitHub Actions Workflow Run events
+async function handleWorkflowRun(workflowRun) {
+    if (!workflowRun) {
+        console.error('handleWorkflowRun called with null or undefined workflow run');
+        return new Response("Invalid workflow run data", { status: 400 });
+    }
+    
+    // Only handle completed workflows (success or failure)
+    if (workflowRun.status !== 'completed') {
+        console.log(`Ignoring workflow run with status: ${workflowRun.status}`);
+        return new Response("Ignored - workflow not completed", { status: 200 });
+    }
+    
+    const workflowName = workflowRun.name || 'Unknown Workflow';
+    const conclusion = workflowRun.conclusion; // success, failure, cancelled, skipped, etc.
+    const workflowUrl = workflowRun.html_url;
+    const author = workflowRun.actor?.login || workflowRun.triggering_actor?.login || 'Unknown User';
+    
+    console.log(`Processing GitHub workflow run: ${workflowName} - ${conclusion} by ${author}`);
+    
+    // Determine title and description based on conclusion
+    let title, description, color, shouldNotify;
+    
+    switch (conclusion) {
+        case 'success':
+            title = `✅ ${workflowName} ran successfully`;
+            description = `The workflow **${workflowName}** completed successfully.\nYou can check out the results on GitHub.`;
+            color = 3066993; // Green
+            shouldNotify = false; // Don't ping for success
+            break;
+            
+        case 'failure':
+            title = `❌ ${workflowName} failed`;
+            description = `${PINGS.maintainers} The workflow **${workflowName}** has failed.\nPlease check the workflow run and address any issues.`;
+            color = 15158332; // Red
+            shouldNotify = true; // Ping maintainers for failures
+            break;
+            
+        case 'cancelled':
+            title = `🚫 ${workflowName} was cancelled`;
+            description = `The workflow **${workflowName}** was cancelled.\nYou can check out the details on GitHub.`;
+            color = 10197915; // Gray
+            shouldNotify = false;
+            break;
+            
+        case 'skipped':
+            // Don't notify for skipped workflows
+            console.log(`Ignoring skipped workflow: ${workflowName}`);
+            return new Response("Ignored - workflow skipped", { status: 200 });
+            
+        default:
+            title = `⚠️ ${workflowName} completed with status: ${conclusion}`;
+            description = `The workflow **${workflowName}** completed with an unusual status.\nYou can check out the results on GitHub.`;
+            color = 16776960; // Yellow
+            shouldNotify = false;
+            break;
+    }
+    
+    // Create the Discord payload
+    const payload = {
+        username: "GitHub Actions",
+        avatar_url: AVATAR_URL,
+        embeds: [
+            {
+                author: {
+                    name: author
+                },
+                title: title,
+                description: description,
+                color: color,
+                timestamp: workflowRun.updated_at || new Date().toISOString(),
+                footer: {
+                    text: FOOTER_TEXT
+                }
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "View Workflow Run",
+                        url: workflowUrl
+                    }
+                ]
+            }
+        ]
+    };
+    
+    return postToDiscord(WEBHOOKS.workflows, payload);
 }

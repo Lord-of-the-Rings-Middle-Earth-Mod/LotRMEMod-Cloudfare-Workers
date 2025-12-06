@@ -12,6 +12,7 @@ describe('Config Module', () => {
       expect(WEBHOOKS.mails).toBeDefined();
       expect(WEBHOOKS.issues).toBeDefined();
       expect(WEBHOOKS.prs).toBeDefined();
+      expect(WEBHOOKS.workflows).toBeDefined();
     });
 
     it('should have valid Discord webhook URLs', () => {
