@@ -24,6 +24,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **WEBHOOKS.issues** for new GitHub issues and fork notifications
 - **WEBHOOKS.prs** for pull request notifications
 - **WEBHOOKS.wiki** for wiki change notifications
+- **WEBHOOKS.workflows** for GitHub Actions workflow run notifications
 
 **Important:** Replace placeholder URLs with actual Discord webhook URLs from your server settings. URLs containing "PLACEHOLDER" will cause 405 Method Not Allowed errors.
 
@@ -55,6 +56,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
   - Release published
   - Issue opened
   - Pull request events (opened, ready_for_review, review_requested, reopened, synchronize)
+  - Workflow run completed (success, failure, cancelled)
 
 ## Supported GitHub Events
 
@@ -130,6 +132,25 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **Role Ping**: Uses release role ping for notifications
 - **Links**: Provides both GitHub release and changelog links
 - **Interactive Buttons**: News channel includes buttons for quick access to changelog Discord channel and GitHub release
+
+### Workflow Runs
+- **GitHub Actions Workflow Events**:
+  - Routes to workflows channel with status-based notifications
+  - Username: "GitHub Actions"
+  - Only processes "completed" workflow runs
+  - **Supported Conclusions**:
+    - `success` - Green color (3066993), no role ping
+    - `failure` - Red color (15158332), pings maintainers role
+    - `cancelled` - Gray color (10197915), no role ping
+    - `skipped` - Ignored, no notification sent
+  - **Message Format**:
+    - Title includes emoji and workflow name with status
+    - Description provides context and action guidance
+    - Author field shows the workflow triggering user
+    - Timestamp uses workflow completion time
+    - Includes "View Workflow Run" button linking to the workflow
+  - **Maintainer Notifications**: Failed workflows automatically ping maintainers for quick response
+  - **Filtering**: Only completed workflows are notified; in-progress and queued workflows are ignored
 
 ## Message Format
 
@@ -367,6 +388,89 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 }
 ```
 
+### Workflow Run Messages
+
+**Successful Workflow:**
+```json
+{
+  "username": "GitHub Actions",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "embeds": [{
+    "author": {
+      "name": "{triggering_user}"
+    },
+    "title": "✅ {workflow_name} ran successfully",
+    "description": "The workflow **{workflow_name}** completed successfully.\nYou can check out the results on GitHub.",
+    "color": 3066993,
+    "timestamp": "ISO Date",
+    "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "View Workflow Run",
+      "url": "{workflow_run.html_url}"
+    }]
+  }]
+}
+```
+
+**Failed Workflow:**
+```json
+{
+  "username": "GitHub Actions",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "embeds": [{
+    "author": {
+      "name": "{triggering_user}"
+    },
+    "title": "❌ {workflow_name} failed",
+    "description": "<@&1237743577656983665> The workflow **{workflow_name}** has failed.\nPlease check the workflow run and address any issues.",
+    "color": 15158332,
+    "timestamp": "ISO Date",
+    "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "View Workflow Run",
+      "url": "{workflow_run.html_url}"
+    }]
+  }]
+}
+```
+
+**Cancelled Workflow:**
+```json
+{
+  "username": "GitHub Actions",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "embeds": [{
+    "author": {
+      "name": "{triggering_user}"
+    },
+    "title": "🚫 {workflow_name} was cancelled",
+    "description": "The workflow **{workflow_name}** was cancelled.\nYou can check out the details on GitHub.",
+    "color": 10197915,
+    "timestamp": "ISO Date",
+    "footer": { "text": "This post originates from GitHub." }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "View Workflow Run",
+      "url": "{workflow_run.html_url}"
+    }]
+  }]
+}
+```
+
 ## Error Handling
 
 - Ignores unsupported actions (anything other than 'created' or 'published')
@@ -393,7 +497,12 @@ To test the GitHub integration:
    - Convert draft to ready for review - should post notification
    - Request review from someone - should post notification
    - Push new commits to existing PR - should post notification (if non-draft)
-7. **Check Logs**: Monitor Cloudflare Worker logs for processing status
+7. **Workflow Run Tests**:
+   - Trigger a workflow that completes successfully - should post green notification
+   - Trigger a workflow that fails - should post red notification with maintainer ping
+   - Cancel a running workflow - should post gray notification
+   - Verify workflow name, status, and link are correct in notifications
+8. **Check Logs**: Monitor Cloudflare Worker logs for processing status
 8. **Verify Discord**: Check the configured Discord channels for new messages
 
 ## Files Modified
