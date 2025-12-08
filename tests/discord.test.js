@@ -162,7 +162,7 @@ describe('Discord Module', () => {
 
       global.fetch.mockResolvedValue(rateLimitResponse);
 
-      const resultPromise = postToDiscord(validWebhookUrl, testPayload, 2);
+      const resultPromise = postToDiscord(validWebhookUrl, testPayload, null, null, 2);  // maxRetries = 2
       
       // Fast-forward through all retry attempts
       await vi.advanceTimersByTimeAsync(10000);
@@ -262,7 +262,7 @@ describe('Discord Module', () => {
       const networkError = new Error('Network error');
       global.fetch.mockRejectedValue(networkError);
 
-      const resultPromise = postToDiscord(validWebhookUrl, testPayload, 1);
+      const resultPromise = postToDiscord(validWebhookUrl, testPayload, null, null, 1);  // maxRetries = 1
       
       // Fast-forward through all retry attempts
       await vi.advanceTimersByTimeAsync(5000);

@@ -18,3 +18,7 @@ enabled = true
 [[kv_namespaces]]
 binding = "FABRIC_KV" # Der Name, den du im Code verwendest
 id = "c762173a2f01465faee2d33d4631e9c8" # Deine Namespace-ID
+
+# Environment variables (secrets should be set via wrangler secret put)
+# GITHUB_TOKEN - GitHub Personal Access Token with 'actions:read' and 'repo' scopes for fetching workflow artifacts
+# Set via: wrangler secret put GITHUB_TOKEN
