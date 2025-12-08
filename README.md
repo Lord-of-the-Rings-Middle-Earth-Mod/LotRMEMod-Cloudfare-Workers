@@ -9,10 +9,10 @@ Test Coverage
 
 The worker provides the following major functionalities:
 
-- **[GitHub Integration](GITHUB_INTEGRATION.md)** - Automatically posts GitHub events (forks, wiki changes, discussions, releases, issues, pull requests) to Discord
+- **[GitHub Integration](GITHUB_INTEGRATION.md)** - Automatically posts GitHub events (forks, wiki changes, discussions, releases, issues, pull requests, workflow runs) to Discord with optional artifact attachments
 - **[RSS Integration](RSS_INTEGRATION.md)** - Monitors Fabric MC blog RSS feed and posts complete content to Discord using multi-message threads  
 - **[Mail Integration](MAIL_INTEGRATION.md)** - Forwards emails to Discord channels
-- **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality with multi-message thread support used by all modules
+- **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality with multi-message thread support and file attachment capabilities used by all modules
 - **[KV Storage](KV_STORAGE.md)** - Utilities for persistent data storage
 
 ## Architecture
@@ -84,6 +84,21 @@ Cloudflare KV is used for persistent storage:
 binding = "FABRIC_KV"
 id = "c762173a2f01465faee2d33d4631e9c8"
 ```
+
+### GitHub Token (Optional)
+
+For the workflow artifact attachment feature, configure a GitHub Personal Access Token as a Cloudflare Worker secret:
+
+```bash
+# Set GitHub token as a secret
+wrangler secret put GITHUB_TOKEN
+```
+
+**Required Token Scopes:**
+- `actions:read` - To read workflow run information and artifacts
+- `repo` - To access repository data
+
+**Note:** If not configured, GitHub workflow notifications will work normally but without artifact attachments.
 
 ## Deployment
 

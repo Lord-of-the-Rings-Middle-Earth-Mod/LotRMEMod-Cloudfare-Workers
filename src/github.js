@@ -1,7 +1,7 @@
 import { postToDiscord } from './discord.js'; // For sending messages to Discord
-import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
+import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
 
-export async function handleGitHubWebhook(request) {
+export async function handleGitHubWebhook(request, env) {
     const data = await request.json();
 
     // If it's a wiki event, handle it
@@ -18,7 +18,7 @@ export async function handleGitHubWebhook(request) {
     }
     // If it's a workflow run, handle it
     else if (data.workflow_run && data.action === "completed") {
-        return handleWorkflowRun(data.workflow_run);
+        return handleWorkflowRun(data.workflow_run, env);
     }
     // If it's a release, handle it
     else if (data.release && data.action == "published") {
@@ -510,7 +510,7 @@ async function handleFork(forkee, sender, repository) {
 }
 
 // Function to handle GitHub Actions Workflow Run events
-async function handleWorkflowRun(workflowRun) {
+async function handleWorkflowRun(workflowRun, env) {
     if (!workflowRun) {
         console.error('handleWorkflowRun called with null or undefined workflow run');
         return new Response("Invalid workflow run data", { status: 400 });
@@ -596,5 +596,117 @@ async function handleWorkflowRun(workflowRun) {
         ]
     };
     
-    return postToDiscord(WEBHOOKS.workflows, payload);
+    // For successful workflows, try to attach artifacts
+    let artifactFile = null;
+    let artifactFilename = null;
+    let successDescription = description; // Store the original description
+    
+    if (conclusion === 'success' && env?.GITHUB_TOKEN) {
+        try {
+            console.log(`Fetching artifacts for successful workflow run ${workflowRun.id}`);
+            const artifacts = await fetchWorkflowArtifacts(workflowRun.id, env.GITHUB_TOKEN);
+            
+            if (artifacts && artifacts.length > 0) {
+                // Use the first artifact (usually there's only one for build workflows)
+                const artifact = artifacts[0];
+                console.log(`Found artifact: ${artifact.name} (${artifact.size_in_bytes} bytes)`);
+                
+                // Download the artifact
+                const blob = await downloadArtifact(artifact.id, env.GITHUB_TOKEN);
+                
+                if (blob) {
+                    artifactFile = blob;
+                    // Artifacts are always downloaded as .zip from GitHub API
+                    // Use the artifact name with .zip extension
+                    artifactFilename = artifact.name.endsWith('.zip') ? artifact.name : `${artifact.name}.zip`;
+                    
+                    // Update the description to mention the attached file
+                    successDescription = `The workflow **${workflowName}** completed successfully.\nThe build artifact **${artifact.name}** is attached to this message.`;
+                }
+            } else {
+                console.log(`No artifacts found for workflow run ${workflowRun.id}`);
+            }
+        } catch (error) {
+            console.error('Error fetching/downloading artifacts:', error);
+            // Continue with sending the message without artifacts
+        }
+    }
+    
+    // Update payload with final description
+    payload.embeds[0].description = successDescription;
+    
+    return postToDiscord(WEBHOOKS.workflows, payload, artifactFile, artifactFilename);
+}
+
+// Helper function to fetch workflow run artifacts from GitHub API
+async function fetchWorkflowArtifacts(workflowRunId, githubToken) {
+    if (!githubToken) {
+        console.log('No GitHub token provided, skipping artifact fetch');
+        return [];
+    }
+    
+    try {
+        const apiUrl = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/actions/runs/${workflowRunId}/artifacts`;
+        
+        console.log(`Fetching artifacts from: ${apiUrl}`);
+        
+        const response = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${githubToken}`,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'LotRMEMod-Cloudflare-Worker'
+            }
+        });
+        
+        if (!response.ok) {
+            console.error(`Failed to fetch artifacts: ${response.status} ${response.statusText}`);
+            return [];
+        }
+        
+        const data = await response.json();
+        console.log(`Found ${data.artifacts?.length || 0} artifacts for workflow run ${workflowRunId}`);
+        
+        return data.artifacts || [];
+    } catch (error) {
+        console.error(`Error fetching workflow artifacts:`, error);
+        return [];
+    }
+}
+
+// Helper function to download a single artifact from GitHub
+async function downloadArtifact(artifactId, githubToken) {
+    if (!githubToken) {
+        console.log('No GitHub token provided, skipping artifact download');
+        return null;
+    }
+    
+    try {
+        const apiUrl = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/actions/artifacts/${artifactId}/zip`;
+        
+        console.log(`Downloading artifact ${artifactId} from: ${apiUrl}`);
+        
+        const response = await fetch(apiUrl, {
+            headers: {
+                'Authorization': `Bearer ${githubToken}`,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'LotRMEMod-Cloudflare-Worker'
+            }
+        });
+        
+        if (!response.ok) {
+            console.error(`Failed to download artifact: ${response.status} ${response.statusText}`);
+            return null;
+        }
+        
+        // Get the artifact as a blob
+        const blob = await response.blob();
+        console.log(`Successfully downloaded artifact ${artifactId}, size: ${blob.size} bytes`);
+        
+        return blob;
+    } catch (error) {
+        console.error(`Error downloading artifact ${artifactId}:`, error);
+        return null;
+    }
 }

@@ -43,6 +43,12 @@ Before the integration can work, you must configure valid Discord webhook URLs i
   - `PINGS.monthly`: Role to ping for monthly update announcements
   - `PINGS.release`: Role to ping for new releases
 - **Avatar**: Uses `AVATAR_URL` from config for consistent branding
+- **GitHub Token** (Optional): For workflow artifact attachment feature
+  - Set via Cloudflare Workers secret: `wrangler secret put GITHUB_TOKEN`
+  - Requires a GitHub Personal Access Token with `actions:read` and `repo` scopes
+  - Used to fetch and download workflow run artifacts from GitHub API
+  - If not configured, workflow notifications work normally but without artifact attachments
+  - Repository information is configured in `config.js` as `GITHUB_REPO` object
 
 ## Endpoints
 
@@ -149,6 +155,12 @@ Before the integration can work, you must configure valid Discord webhook URLs i
     - Author field shows the workflow triggering user
     - Timestamp uses workflow completion time
     - Includes "View Workflow Run" button linking to the workflow
+  - **Artifact Attachment** (requires GITHUB_TOKEN):
+    - Successful workflows automatically fetch and attach build artifacts
+    - Artifacts are downloaded from GitHub API and attached to Discord message
+    - Supports .jar files and .zip files (artifacts are always zipped by GitHub)
+    - Updates message description to indicate attached artifact
+    - Falls back gracefully if no artifacts are found or if fetch fails
   - **Maintainer Notifications**: Failed workflows automatically ping maintainers for quick response
   - **Filtering**: Only completed workflows are notified; in-progress and queued workflows are ignored
 

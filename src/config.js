@@ -30,3 +30,9 @@ export const AVATAR_URL = "https://gravatar.com/userimage/252885236/50dd5bda0731
 
 // A default text to use for footer in messages
 export const FOOTER_TEXT = "This post originates from GitHub.";
+
+// GitHub repository configuration for artifact fetching
+export const GITHUB_REPO = {
+  owner: "Lord-of-the-Rings-Middle-Earth-Mod",
+  repo: "Lord-of-the-Rings-Middle-Earth-Mod"
+};

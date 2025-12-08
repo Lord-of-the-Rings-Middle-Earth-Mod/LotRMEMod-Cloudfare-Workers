@@ -5,28 +5,38 @@ This module provides shared Discord webhook functionality used by all other inte
 ## Features
 
 - **Webhook Posting**: Sends HTTP POST requests to Discord webhook URLs
+- **File Attachments**: Supports attaching files to Discord messages (e.g., build artifacts)
 - **Error Handling**: Provides consistent error responses across all integrations
 - **JSON Formatting**: Handles JSON serialization of Discord payloads
+- **Multipart Form Data**: Automatically uses multipart/form-data when files are attached
 - **Status Reporting**: Returns appropriate HTTP status codes
 
 ## Core Function
 
-### `postToDiscord(webhookUrl, payload, maxRetries = 3)`
+### `postToDiscord(webhookUrl, payload, file = null, filename = null, maxRetries = 3)`
 
 The main function that handles all Discord communications with built-in rate limiting and retry logic:
 
 ```javascript
-export async function postToDiscord(webhookUrl, payload, maxRetries = 3)
+export async function postToDiscord(webhookUrl, payload, file = null, filename = null, maxRetries = 3)
 ```
 
 **Parameters:**
 - `webhookUrl` (string): The Discord webhook URL to post to
 - `payload` (object): The Discord message payload object
+- `file` (Blob, optional): File blob to attach to the message (e.g., .jar or .zip file)
+- `filename` (string, optional): Name of the file to attach
 - `maxRetries` (number, optional): Maximum retry attempts for rate limiting and errors (default: 3)
 
 **Returns:**
 - `Response`: HTTP response with status 200 (success), 429 (rate limit exceeded), or 500 (error)
 - **Success Response**: JSON object with Discord API response data including thread information
+
+**File Attachment:**
+- When both `file` and `filename` are provided, uses multipart/form-data format
+- Automatically creates FormData with payload_json and files[0] fields
+- Supports any file type up to Discord's file size limits (25 MB for most servers)
+- Falls back to JSON-only format when no file is provided
 
 **Rate Limiting Features:**
 - Automatically retries on HTTP 429 "Too Many Requests" responses

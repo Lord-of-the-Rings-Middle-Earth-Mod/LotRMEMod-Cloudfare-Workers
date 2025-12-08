@@ -27,7 +27,11 @@ vi.mock('../src/config.js', () => ({
     suggestions: '1283842398308532256'
   },
   AVATAR_URL: 'https://gravatar.com/test.jpeg',
-  FOOTER_TEXT: 'This post originates from GitHub.'
+  FOOTER_TEXT: 'This post originates from GitHub.',
+  GITHUB_REPO: {
+    owner: 'test-owner',
+    repo: 'test-repo'
+  }
 }));
 
 import { postToDiscord } from '../src/discord.js';
@@ -1061,7 +1065,9 @@ describe('GitHub Module', () => {
                 ])
               })
             ])
-          })
+          }),
+          null,  // No file attachment for workflow without GITHUB_TOKEN
+          null   // No filename
         );
       });
 
@@ -1091,7 +1097,9 @@ describe('GitHub Module', () => {
                 color: 15158332
               })
             ])
-          })
+          }),
+          null,  // No file attachment for failed workflows
+          null   // No filename
         );
         
         // Verify description contains maintainer ping and failure message
@@ -1125,7 +1133,9 @@ describe('GitHub Module', () => {
                 color: 10197915
               })
             ])
-          })
+          }),
+          null,  // No file attachment for cancelled workflows
+          null   // No filename
         );
       });
 
@@ -1237,6 +1247,182 @@ describe('GitHub Module', () => {
         
         const call = postToDiscord.mock.calls[0][1];
         expect(call.avatar_url).toBe('https://gravatar.com/test.jpeg');
+      });
+
+      it('should fetch and attach artifacts for successful workflows with GITHUB_TOKEN', async () => {
+        // Mock GitHub API responses
+        const mockArtifact = {
+          id: 123456,
+          name: 'build-artifacts',
+          size_in_bytes: 1024
+        };
+        
+        const mockArtifactsResponse = {
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            artifacts: [mockArtifact]
+          })
+        };
+        
+        const mockBlobData = new Blob(['test artifact data'], { type: 'application/zip' });
+        const mockDownloadResponse = {
+          ok: true,
+          blob: vi.fn().mockResolvedValue(mockBlobData)
+        };
+        
+        // Mock fetch for GitHub API calls
+        global.fetch = vi.fn()
+          .mockResolvedValueOnce(mockArtifactsResponse)  // artifacts list
+          .mockResolvedValueOnce(mockDownloadResponse);   // artifact download
+        
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: {
+              ...baseWorkflowRun,
+              id: 789
+            }
+          })
+        };
+        
+        const mockEnv = {
+          GITHUB_TOKEN: 'test-token'
+        };
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Verify GitHub API was called to fetch artifacts
+        expect(global.fetch).toHaveBeenCalledWith(
+          'https://api.github.com/repos/test-owner/test-repo/actions/runs/789/artifacts',
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'Authorization': 'Bearer test-token'
+            })
+          })
+        );
+        
+        // Verify artifact was downloaded
+        expect(global.fetch).toHaveBeenCalledWith(
+          'https://api.github.com/repos/test-owner/test-repo/actions/artifacts/123456/zip',
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'Authorization': 'Bearer test-token'
+            })
+          })
+        );
+        
+        // Verify postToDiscord was called with the artifact file
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                description: expect.stringContaining('build-artifacts')
+              })
+            ])
+          }),
+          mockBlobData,
+          'build-artifacts.zip'
+        );
+      });
+
+      it('should handle successful workflows without GITHUB_TOKEN', async () => {
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: baseWorkflowRun
+          })
+        };
+        
+        // No env provided
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        // Verify postToDiscord was called without artifacts
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.any(Object),
+          null,
+          null
+        );
+      });
+
+      it('should handle workflows with no artifacts', async () => {
+        // Mock GitHub API response with no artifacts
+        const mockArtifactsResponse = {
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            artifacts: []
+          })
+        };
+        
+        global.fetch = vi.fn().mockResolvedValueOnce(mockArtifactsResponse);
+        
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: {
+              ...baseWorkflowRun,
+              id: 789
+            }
+          })
+        };
+        
+        const mockEnv = {
+          GITHUB_TOKEN: 'test-token'
+        };
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Verify postToDiscord was called without artifacts
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.any(Object),
+          null,
+          null
+        );
+      });
+
+      it('should handle artifact fetch errors gracefully', async () => {
+        // Mock GitHub API to return error
+        const mockErrorResponse = {
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error'
+        };
+        
+        global.fetch = vi.fn().mockResolvedValueOnce(mockErrorResponse);
+        
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: {
+              ...baseWorkflowRun,
+              id: 789
+            }
+          })
+        };
+        
+        const mockEnv = {
+          GITHUB_TOKEN: 'test-token'
+        };
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Verify postToDiscord was still called (without artifacts)
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.any(Object),
+          null,
+          null
+        );
       });
     });
   });

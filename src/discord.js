@@ -1,5 +1,5 @@
 // The function to post messages to Discord with rate limiting and retry logic
-export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
+export async function postToDiscord(webhookUrl, payload, file = null, filename = null, maxRetries = 3) {
     // Validate webhook URL before making request
     if (!webhookUrl || webhookUrl.includes('PLACEHOLDER') || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
         const errorMsg = `Invalid Discord webhook URL: ${webhookUrl}. Please configure a valid Discord webhook URL in config.js`;
@@ -11,12 +11,31 @@ export async function postToDiscord(webhookUrl, payload, maxRetries = 3) {
         try {
             console.log(`Posting to Discord webhook (attempt ${attempt}/${maxRetries + 1})`);
             
+            let requestOptions;
+            
+            // If a file is provided, use multipart/form-data
+            if (file && filename) {
+                console.log(`Attaching file: ${filename} (${file.size} bytes)`);
+                
+                const formData = new FormData();
+                formData.append('payload_json', JSON.stringify(payload));
+                formData.append('files[0]', file, filename);
+                
+                requestOptions = {
+                    method: "POST",
+                    body: formData
+                };
+            } else {
+                // Otherwise, use JSON
+                requestOptions = {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                };
+            }
+            
             // Send the HTTP POST request to Discord with the webhook URL and payload
-            const response = await fetch(webhookUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            const response = await fetch(webhookUrl, requestOptions);
 
             // Log response details only for errors
             if (response.status >= 400) {
