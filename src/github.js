@@ -599,6 +599,7 @@ async function handleWorkflowRun(workflowRun, env) {
     // For successful workflows, try to attach artifacts
     let artifactFile = null;
     let artifactFilename = null;
+    let successDescription = description; // Store the original description
     
     if (conclusion === 'success' && env?.GITHUB_TOKEN) {
         try {
@@ -606,8 +607,7 @@ async function handleWorkflowRun(workflowRun, env) {
             const artifacts = await fetchWorkflowArtifacts(workflowRun.id, env.GITHUB_TOKEN);
             
             if (artifacts && artifacts.length > 0) {
-                // Prioritize .jar files, then .zip files
-                // Find the first artifact (usually there's only one for build workflows)
+                // Use the first artifact (usually there's only one for build workflows)
                 const artifact = artifacts[0];
                 console.log(`Found artifact: ${artifact.name} (${artifact.size_in_bytes} bytes)`);
                 
@@ -621,7 +621,7 @@ async function handleWorkflowRun(workflowRun, env) {
                     artifactFilename = artifact.name.endsWith('.zip') ? artifact.name : `${artifact.name}.zip`;
                     
                     // Update the description to mention the attached file
-                    payload.embeds[0].description = `The workflow **${workflowName}** completed successfully.\nThe build artifact **${artifact.name}** is attached to this message.`;
+                    successDescription = `The workflow **${workflowName}** completed successfully.\nThe build artifact **${artifact.name}** is attached to this message.`;
                 }
             } else {
                 console.log(`No artifacts found for workflow run ${workflowRun.id}`);
@@ -631,6 +631,9 @@ async function handleWorkflowRun(workflowRun, env) {
             // Continue with sending the message without artifacts
         }
     }
+    
+    // Update payload with final description
+    payload.embeds[0].description = successDescription;
     
     return postToDiscord(WEBHOOKS.workflows, payload, artifactFile, artifactFilename);
 }
