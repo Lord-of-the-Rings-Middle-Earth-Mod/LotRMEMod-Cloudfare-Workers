@@ -10,7 +10,8 @@ Test Coverage
 The worker provides the following major functionalities:
 
 - **[GitHub Integration](GITHUB_INTEGRATION.md)** - Automatically posts GitHub events (forks, wiki changes, discussions, releases, issues, pull requests, workflow runs) to Discord with optional artifact attachments
-- **[RSS Integration](RSS_INTEGRATION.md)** - Monitors Fabric MC blog RSS feed and posts complete content to Discord using multi-message threads  
+- **[RSS Integration](RSS_INTEGRATION.md)** - Monitors Fabric MC blog RSS feed and posts complete content to Discord using multi-message threads
+- **[Minecraft News Integration](MINECRAFT_INTEGRATION.md)** - Automatically fetches and posts Minecraft.net articles to Discord with duplicate prevention  
 - **[Mail Integration](MAIL_INTEGRATION.md)** - Forwards emails to Discord channels
 - **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting functionality with multi-message thread support and file attachment capabilities used by all modules
 - **[KV Storage](KV_STORAGE.md)** - Utilities for persistent data storage
@@ -24,6 +25,7 @@ src/
 ├── index.js          # Main entry point and routing
 ├── github.js         # GitHub webhook handling
 ├── rss.js           # RSS feed monitoring
+├── minecraft.js     # Minecraft article monitoring
 ├── mails.js         # Email forwarding  
 ├── discord.js       # Shared Discord posting
 ├── kvutils.js       # KV storage utilities
@@ -37,10 +39,12 @@ The worker exposes the following HTTP endpoints:
 - `POST /github` - GitHub webhook receiver for repository events (forks, wiki changes, discussions, releases, issues, pull requests)
 - `POST /mails` - Email forwarding endpoint  
 - `POST /rss` - Manual RSS feed processing trigger
+- `POST /minecraft` - Manual Minecraft article processing trigger
 
 ## Scheduled Tasks
 
 - **Daily RSS Check**: Runs at midnight UTC (`0 0 * * *`) to check for new Fabric MC blog posts
+- **Daily Minecraft News Check**: Runs at midnight UTC (`0 0 * * *`) to check for new Minecraft.net articles
 
 ## Configuration
 
@@ -54,6 +58,7 @@ export const WEBHOOKS = {
   changelog: "https://discord.com/api/webhooks/...",   // Release changelog details  
   suggestions: "https://discord.com/api/webhooks/...", // GitHub suggestions
   fabricblog: "https://discord.com/api/webhooks/...",  // Fabric RSS updates
+  minecraftnews: "https://discord.com/api/webhooks/...", // Minecraft.net articles
   mails: "https://discord.com/api/webhooks/...",       // Email forwarding
   issues: "https://discord.com/api/webhooks/...",      // GitHub issues
   prs: "https://discord.com/api/webhooks/..."          // GitHub pull requests
@@ -71,7 +76,8 @@ export const PINGS = {
   news: "<@&1297538431001432135>",           // News announcements
   monthly: "<@&1346200306911940639>",        // Monthly updates
   release: "<@&1297543002222493761>",        // Release notifications  
-  fabricupdates: "<@&1371820347543916554>"   // Fabric blog updates
+  fabricupdates: "<@&1371820347543916554>",  // Fabric blog updates
+  minecraftnews: "<@&PLACEHOLDER_MINECRAFT_NEWS_ROLE_ID>" // Minecraft news updates
 };
 ```
 
@@ -141,6 +147,7 @@ Each integration can be tested individually:
 
 - **GitHub**: Configure webhook in repository settings
 - **RSS**: Use `POST /rss` endpoint for manual testing
+- **Minecraft**: Use `POST /minecraft` endpoint for manual testing
 - **Mail**: Send POST request with email data structure
 - **Discord**: Monitor Discord channels for posted messages
 
@@ -150,6 +157,7 @@ Detailed documentation is available for each module:
 
 - **[GitHub Integration](GITHUB_INTEGRATION.md)** - GitHub webhook processing and Discord posting
 - **[RSS Integration](RSS_INTEGRATION.md)** - Fabric MC blog monitoring with multi-message posting
+- **[Minecraft News Integration](MINECRAFT_INTEGRATION.md)** - Minecraft.net article monitoring with duplicate prevention
 - **[Mail Integration](MAIL_INTEGRATION.md)** - Email forwarding to Discord
 - **[Discord Integration](DISCORD_INTEGRATION.md)** - Shared Discord posting with thread support  
 - **[KV Storage](KV_STORAGE.md)** - Persistent storage utilities

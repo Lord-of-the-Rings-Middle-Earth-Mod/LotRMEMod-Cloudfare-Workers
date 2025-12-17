@@ -8,7 +8,8 @@ export const WEBHOOKS = {
   issues: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
   prs: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
   wiki: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
-  workflows: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS"
+  workflows: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
+  minecraftnews: "https://discord.com/api/webhooks/PLACEHOLDER_MINECRAFT_NEWS_WEBHOOK_ID/PLACEHOLDER_MINECRAFT_NEWS_WEBHOOK_TOKEN"
 };
 
 export const PINGS = {
@@ -17,7 +18,8 @@ export const PINGS = {
   release: "<@&1297543002222493761>",
   fabricupdates: "<@&1371820347543916554>",
   maintainers: "<@&1237743577656983665>", // For PRs from forks (first-time contributors)
-  contributors: "<@&1301093445951164498>" // For PRs from branches (existing team members)
+  contributors: "<@&1301093445951164498>", // For PRs from branches (existing team members)
+  minecraftnews: "<@&PLACEHOLDER_MINECRAFT_NEWS_ROLE_ID>" // For Minecraft news updates
 };
 
 // Discord tags for specific post types

@@ -1,6 +1,7 @@
 import { handleGitHubWebhook } from './github.js';
 import { handleMails } from './mails.js';
 import { handleRSS } from './rss.js';
+import { handleMinecraftNews } from './minecraft.js';
 import { WEBHOOKS } from './config.js';
 
 export default {
@@ -19,11 +20,18 @@ export default {
       return handleRSS(request, env);
     }
 
+    if (url.pathname === "/minecraft" && request.method === "POST") {
+      return handleMinecraftNews(request, env);
+    }
+
     return new Response("Not found", { status: 404 });
   },
 
   async scheduled(event, env, ctx) {
-    // Handle scheduled cron events - check RSS feed for new entries
-    ctx.waitUntil(handleRSS(null, env));
+    // Handle scheduled cron events - check RSS feed and Minecraft news for new entries
+    ctx.waitUntil(Promise.all([
+      handleRSS(null, env),
+      handleMinecraftNews(null, env)
+    ]));
   }
 };

@@ -16,8 +16,13 @@ describe('Config Module', () => {
     });
 
     it('should have valid Discord webhook URLs', () => {
-      Object.values(WEBHOOKS).forEach((webhook) => {
-        expect(webhook).toMatch(/^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/);
+      Object.entries(WEBHOOKS).forEach(([key, webhook]) => {
+        // Allow placeholder for minecraftnews webhook (to be configured by user)
+        if (key === 'minecraftnews' && webhook.includes('PLACEHOLDER')) {
+          expect(webhook).toMatch(/^https:\/\/discord\.com\/api\/webhooks\/PLACEHOLDER/);
+        } else {
+          expect(webhook).toMatch(/^https:\/\/discord\.com\/api\/webhooks\/\d+\/[\w-]+$/);
+        }
       });
     });
 
@@ -36,8 +41,13 @@ describe('Config Module', () => {
     });
 
     it('should have valid Discord role ping format', () => {
-      Object.values(PINGS).forEach((ping) => {
-        expect(ping).toMatch(/^<@&\d+>$/);
+      Object.entries(PINGS).forEach(([key, ping]) => {
+        // Allow placeholder for minecraftnews ping (to be configured by user)
+        if (key === 'minecraftnews' && ping.includes('PLACEHOLDER')) {
+          expect(ping).toMatch(/^<@&PLACEHOLDER/);
+        } else {
+          expect(ping).toMatch(/^<@&\d+>$/);
+        }
       });
     });
   });

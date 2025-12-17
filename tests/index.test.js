@@ -13,9 +13,14 @@ vi.mock('../src/rss.js', () => ({
   handleRSS: vi.fn()
 }));
 
+vi.mock('../src/minecraft.js', () => ({
+  handleMinecraftNews: vi.fn()
+}));
+
 import { handleGitHubWebhook } from '../src/github.js';
 import { handleMails } from '../src/mails.js';
 import { handleRSS } from '../src/rss.js';
+import { handleMinecraftNews } from '../src/minecraft.js';
 
 describe('Worker Integration Tests', () => {
   const mockEnv = {
@@ -32,6 +37,7 @@ describe('Worker Integration Tests', () => {
     handleGitHubWebhook.mockResolvedValue(new Response('GitHub handled', { status: 200 }));
     handleMails.mockResolvedValue(new Response('Mail handled', { status: 200 }));
     handleRSS.mockResolvedValue(new Response('RSS handled', { status: 200 }));
+    handleMinecraftNews.mockResolvedValue(new Response('Minecraft handled', { status: 200 }));
   });
 
   describe('fetch handler', () => {
@@ -85,6 +91,21 @@ describe('Worker Integration Tests', () => {
       expect(await response.text()).toBe('RSS handled');
     });
 
+    it('should route Minecraft requests to /minecraft endpoint', async () => {
+      const request = new Request('https://example.com/minecraft', {
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const worker = await import('../src/index.js');
+      const response = await worker.default.fetch(request, mockEnv);
+
+      expect(handleMinecraftNews).toHaveBeenCalledWith(request, mockEnv);
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe('Minecraft handled');
+    });
+
     it('should reject non-POST requests to /mails', async () => {
       const request = new Request('https://example.com/mails', {
         method: 'GET'
@@ -111,6 +132,19 @@ describe('Worker Integration Tests', () => {
       expect(await response.text()).toBe('Not found');
     });
 
+    it('should reject non-POST requests to /minecraft', async () => {
+      const request = new Request('https://example.com/minecraft', {
+        method: 'GET'
+      });
+
+      const worker = await import("../src/index.js");
+      const response = await worker.default.fetch(request, mockEnv);
+
+      expect(handleMinecraftNews).not.toHaveBeenCalled();
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe('Not found');
+    });
+
     it('should return 404 for unknown endpoints', async () => {
       const request = new Request('https://example.com/unknown', {
         method: 'POST'
@@ -122,6 +156,7 @@ describe('Worker Integration Tests', () => {
       expect(handleGitHubWebhook).not.toHaveBeenCalled();
       expect(handleMails).not.toHaveBeenCalled();
       expect(handleRSS).not.toHaveBeenCalled();
+      expect(handleMinecraftNews).not.toHaveBeenCalled();
       expect(response.status).toBe(404);
       expect(await response.text()).toBe('Not found');
     });
