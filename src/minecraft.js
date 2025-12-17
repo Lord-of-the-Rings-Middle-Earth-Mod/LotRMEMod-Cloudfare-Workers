@@ -194,22 +194,30 @@ function extractTeaser(html) {
 
 /**
  * Cleans HTML tags and entities from text
+ * Note: This is used only for extracting plain text titles and teasers from Minecraft.net HTML.
+ * The output is sent to Discord's API which handles its own sanitization.
  * @param {string} text - Text with HTML
  * @returns {string} - Clean text
  */
 function cleanHTML(text) {
   if (!text) return '';
   
-  return text
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+  // First decode HTML entities, then remove tags to prevent double-escaping issues
+  let cleaned = text
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim();
+    .replace(/&apos;/g, "'");
+  
+  // Then remove all HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  
+  // Finally normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  return cleaned;
 }
 
 /**
