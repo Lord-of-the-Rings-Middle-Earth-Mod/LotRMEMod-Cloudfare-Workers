@@ -30,6 +30,9 @@ export const TAGS = {
 // Avatar URL to use in Discord messages
 export const AVATAR_URL = "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256";
 
+// Minecraft News Bot avatar URL
+export const MINECRAFT_AVATAR_URL = "https://www.minecraft.net/etc.clientlibs/minecraft/clientlibs/main/resources/img/minecraft-creeper-icon.jpg";
+
 // A default text to use for footer in messages
 export const FOOTER_TEXT = "This post originates from GitHub.";
 

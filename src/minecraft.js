@@ -1,5 +1,5 @@
 import { postToDiscord } from './discord.js';
-import { WEBHOOKS, PINGS, AVATAR_URL } from './config.js';
+import { WEBHOOKS, PINGS, MINECRAFT_AVATAR_URL } from './config.js';
 import { readFromKV, saveToKV } from './kvutils.js';
 
 // Minecraft articles URL
@@ -79,17 +79,19 @@ export async function handleMinecraftNews(request, env) {
 
 /**
  * Parses Minecraft articles HTML and extracts article information
- * Uses HTMLRewriter for Edge-compatible parsing
+ * Uses regex-based parsing for maximum compatibility across different JS environments
+ * (Note: While HTMLRewriter is available in Cloudflare Workers, regex parsing is simpler
+ * and more portable for this straightforward use case)
  * @param {string} htmlText - The HTML page text
  * @returns {Array} - Array of article objects with title, url, date, teaser
  */
 async function parseMinecraftArticles(htmlText) {
   const articles = [];
   
-  // Use regex-based parsing as a fallback since HTMLRewriter may not be available in all contexts
+  // Use regex-based parsing for simplicity and portability
   // Looking for article cards with common patterns
   
-  // Pattern 1: Look for article elements with links
+  // Try multiple patterns to handle different HTML structures
   const articlePatterns = [
     // Match article tags with href links
     /<article[^>]*>[\s\S]*?<a[^>]*href=["']([^"']+)["'][^>]*>[\s\S]*?<h[2-4][^>]*>(.*?)<\/h[2-4]>[\s\S]*?<\/article>/gi,
@@ -99,9 +101,13 @@ async function parseMinecraftArticles(htmlText) {
     /<a[^>]*href=["'](\/[^"']*\/article[^"']+)["'][^>]*>[\s\S]*?<h[2-4][^>]*>(.*?)<\/h[2-4]>[\s\S]*?<\/a>/gi
   ];
   
-  // Try each pattern
+  // Try each pattern - we stop at the first pattern that finds articles
+  // This is intentional: different websites use different structures, and trying
+  // all patterns could lead to duplicates or regex state issues
   for (const pattern of articlePatterns) {
+    const patternArticles = [];
     let match;
+    
     while ((match = pattern.exec(htmlText)) !== null) {
       const url = match[1];
       const title = cleanHTML(match[2]);
@@ -117,9 +123,9 @@ async function parseMinecraftArticles(htmlText) {
         const teaser = extractTeaser(blockHtml);
         
         // Check if we already have this article
-        const isDuplicate = articles.some(a => a.url === fullUrl);
+        const isDuplicate = patternArticles.some(a => a.url === fullUrl);
         if (!isDuplicate) {
-          articles.push({
+          patternArticles.push({
             title,
             url: fullUrl,
             date,
@@ -129,8 +135,11 @@ async function parseMinecraftArticles(htmlText) {
       }
     }
     
-    // If we found articles with this pattern, stop trying other patterns
-    if (articles.length > 0) break;
+    // If this pattern found articles, use them and stop trying other patterns
+    if (patternArticles.length > 0) {
+      articles.push(...patternArticles);
+      break;
+    }
   }
   
   return articles;
@@ -275,7 +284,7 @@ async function sendArticleToDiscord(article) {
       }
     ],
     username: "Minecraft News Bot",
-    avatar_url: "https://www.minecraft.net/etc.clientlibs/minecraft/clientlibs/main/resources/img/minecraft-creeper-icon.jpg"
+    avatar_url: MINECRAFT_AVATAR_URL
   };
   
   const response = await postToDiscord(WEBHOOKS.minecraftnews, forumPayload);

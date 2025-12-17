@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleMinecraftNews } from '../src/minecraft.js';
 
 // Mock the dependencies
@@ -18,19 +18,12 @@ vi.mock('../src/config.js', () => ({
   PINGS: {
     minecraftnews: '<@&PLACEHOLDER_MINECRAFT_NEWS_ROLE_ID>'
   },
-  AVATAR_URL: 'https://gravatar.com/test.jpeg'
+  AVATAR_URL: 'https://gravatar.com/test.jpeg',
+  MINECRAFT_AVATAR_URL: 'https://example.com/minecraft-avatar.jpg'
 }));
 
 // Mock fetch globally
 global.fetch = vi.fn();
-
-// Mock console to suppress output during tests
-global.console = {
-  ...console,
-  log: vi.fn(),
-  error: vi.fn(),
-  warn: vi.fn()
-};
 
 import { postToDiscord } from '../src/discord.js';
 import { readFromKV, saveToKV } from '../src/kvutils.js';
@@ -69,6 +62,11 @@ describe('Minecraft News Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
+    // Mock console methods to suppress output during tests
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    
     // Default successful responses
     global.fetch.mockResolvedValue({
       ok: true,
@@ -78,6 +76,10 @@ describe('Minecraft News Module', () => {
     postToDiscord.mockResolvedValue({ status: 200 });
     readFromKV.mockResolvedValue([]);
     saveToKV.mockResolvedValue();
+  });
+  
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('handleMinecraftNews', () => {
