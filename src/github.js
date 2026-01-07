@@ -686,22 +686,43 @@ async function downloadArtifact(artifactId, githubToken) {
         
         console.log(`Downloading artifact ${artifactId} from: ${apiUrl}`);
         
+        // First request: Get the redirect URL (GitHub returns 302 with Location header)
         const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${githubToken}`,
                 'Accept': 'application/vnd.github+json',
                 'X-GitHub-Api-Version': '2022-11-28',
                 'User-Agent': 'LotRMEMod-Cloudflare-Worker'
-            }
+            },
+            redirect: 'manual'  // Don't follow redirects automatically
         });
         
-        if (!response.ok) {
-            console.error(`Failed to download artifact: ${response.status} ${response.statusText}`);
+        // GitHub API returns 302 with Location header pointing to the actual download URL
+        if (response.status !== 302) {
+            console.error(`Failed to get artifact download URL: ${response.status} ${response.statusText}`);
+            return null;
+        }
+        
+        // Extract the redirect URL from the Location header
+        const downloadUrl = response.headers.get('Location');
+        if (!downloadUrl) {
+            console.error('No Location header in redirect response');
+            return null;
+        }
+        
+        console.log(`Got redirect URL for artifact ${artifactId}, downloading from storage...`);
+        
+        // Second request: Download the actual artifact from the redirect URL
+        // Note: The redirect URL contains embedded authentication, so we don't need the GitHub token
+        const downloadResponse = await fetch(downloadUrl);
+        
+        if (!downloadResponse.ok) {
+            console.error(`Failed to download artifact from storage: ${downloadResponse.status} ${downloadResponse.statusText}`);
             return null;
         }
         
         // Get the artifact as a blob
-        const blob = await response.blob();
+        const blob = await downloadResponse.blob();
         console.log(`Successfully downloaded artifact ${artifactId}, size: ${blob.size} bytes`);
         
         return blob;
