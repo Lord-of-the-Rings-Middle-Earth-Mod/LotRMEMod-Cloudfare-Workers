@@ -1342,6 +1342,74 @@ describe('GitHub Module', () => {
         );
       });
 
+      it('should handle 301 redirect for artifact downloads', async () => {
+        const mockArtifact = {
+          id: 123456,
+          name: 'build-artifacts',
+          size_in_bytes: 1024
+        };
+        
+        const mockArtifactsResponse = {
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            artifacts: [mockArtifact]
+          })
+        };
+        
+        // Mock the 301 redirect response from GitHub API (instead of 302)
+        const mockRedirectResponse = {
+          status: 301,
+          ok: false,
+          headers: {
+            get: vi.fn().mockReturnValue('https://storage.example.com/artifact.zip?token=abc123')
+          }
+        };
+        
+        const mockBlobData = new Blob(['test artifact data'], { type: 'application/zip' });
+        const mockDownloadResponse = {
+          ok: true,
+          blob: vi.fn().mockResolvedValue(mockBlobData)
+        };
+        
+        // Mock fetch for GitHub API calls
+        global.fetch = vi.fn()
+          .mockResolvedValueOnce(mockArtifactsResponse)   // artifacts list
+          .mockResolvedValueOnce(mockRedirectResponse)    // 301 redirect to download URL
+          .mockResolvedValueOnce(mockDownloadResponse);   // actual artifact download from storage
+        
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: {
+              ...baseWorkflowRun,
+              id: 789
+            }
+          })
+        };
+        
+        const mockEnv = {
+          GITHUB_TOKEN: 'test-token'
+        };
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Verify postToDiscord was called with the artifact file
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                description: expect.stringContaining('build-artifacts')
+              })
+            ])
+          }),
+          mockBlobData,
+          'build-artifacts.zip'
+        );
+      });
+
       it('should handle successful workflows without GITHUB_TOKEN', async () => {
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
