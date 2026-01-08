@@ -697,8 +697,8 @@ async function downloadArtifact(artifactId, githubToken) {
             redirect: 'manual'  // Don't follow redirects automatically
         });
         
-        // GitHub API returns 302 with Location header pointing to the actual download URL
-        if (response.status !== 302) {
+        // GitHub API returns 301 or 302 with Location header pointing to the actual download URL
+        if (response.status !== 301 && response.status !== 302) {
             console.error(`Failed to get artifact download URL: ${response.status} ${response.statusText}`);
             return null;
         }
