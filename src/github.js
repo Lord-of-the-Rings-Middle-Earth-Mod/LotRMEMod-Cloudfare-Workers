@@ -713,8 +713,13 @@ async function downloadArtifact(artifactId, githubToken) {
         console.log(`Got redirect URL for artifact ${artifactId}, downloading from storage...`);
         
         // Second request: Download the actual artifact from the redirect URL
-        // Note: The redirect URL contains embedded authentication, so we don't need the GitHub token
-        const downloadResponse = await fetch(downloadUrl);
+        // Note: The redirect URL contains embedded SAS authentication
+        // We must NOT include Authorization headers as they conflict with Azure's SAS token
+        // Explicitly configure the request with empty headers for Cloudflare Workers
+        const downloadResponse = await fetch(downloadUrl, {
+            method: 'GET',
+            headers: {}  // Empty headers - do NOT add Authorization header
+        });
         
         if (!downloadResponse.ok) {
             console.error(`Failed to download artifact from storage: ${downloadResponse.status} ${downloadResponse.statusText}`);
