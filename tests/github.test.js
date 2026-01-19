@@ -1324,8 +1324,14 @@ describe('GitHub Module', () => {
           })
         );
         
-        // Verify the redirect URL was called to download the artifact
-        expect(global.fetch).toHaveBeenCalledWith('https://storage.example.com/artifact.zip?token=abc123');
+        // Verify the redirect URL was called to download the artifact with explicit configuration
+        expect(global.fetch).toHaveBeenCalledWith(
+          'https://storage.example.com/artifact.zip?token=abc123',
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.any(Object)
+          })
+        );
         
         // Verify postToDiscord was called with the artifact file
         expect(postToDiscord).toHaveBeenCalledWith(
@@ -1603,6 +1609,77 @@ describe('GitHub Module', () => {
         expect(result.status).toBe(200);
         
         // Verify postToDiscord was still called (without artifacts)
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/workflows',
+          expect.any(Object),
+          null,
+          null
+        );
+      });
+
+      it('should handle 403 error from Azure blob storage download', async () => {
+        // Mock artifact list response
+        const mockArtifactsResponse = {
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            artifacts: [{
+              id: 123456,
+              name: 'build-artifacts',
+              size_in_bytes: 1024
+            }]
+          })
+        };
+        
+        // Mock 302 redirect response with Location header
+        const mockRedirectResponse = {
+          status: 302,
+          ok: false,
+          statusText: 'Found',
+          headers: {
+            get: vi.fn().mockReturnValue('https://storage.example.com/artifact.zip?token=abc123')
+          }
+        };
+        
+        // Mock 403 response from Azure blob storage
+        const mock403Response = {
+          status: 403,
+          ok: false,
+          statusText: 'Forbidden'
+        };
+        
+        global.fetch = vi.fn()
+          .mockResolvedValueOnce(mockArtifactsResponse)   // artifacts list
+          .mockResolvedValueOnce(mockRedirectResponse)    // redirect response
+          .mockResolvedValueOnce(mock403Response);        // 403 from Azure blob storage
+        
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'completed',
+            workflow_run: {
+              ...baseWorkflowRun,
+              id: 789
+            }
+          })
+        };
+        
+        const mockEnv = {
+          GITHUB_TOKEN: 'test-token'
+        };
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Verify that the download was attempted with proper configuration
+        expect(global.fetch).toHaveBeenCalledWith(
+          'https://storage.example.com/artifact.zip?token=abc123',
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.any(Object)
+          })
+        );
+        
+        // Verify postToDiscord was called without artifacts (graceful failure)
         expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/workflows',
           expect.any(Object),
