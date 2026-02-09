@@ -117,7 +117,7 @@ async function handleDiscussion(discussion) {
     let webhookUrl, username, titlePrefix;
     let useThread = false;
 
-    let embedDescription = discussion.body;
+    let embedDescription = discussion.body || "";
 
     // Determine the webhook and title based on the category
     if (category === "Announcements") {
@@ -129,15 +129,32 @@ async function handleDiscussion(discussion) {
         const hasMonthlyUpdatesLabel = discussion.labels.some(label => label.name === "Monthly Updates");
         const rolePing = hasMonthlyUpdatesLabel ? PINGS.monthly : PINGS.news; 
 
-        embedDescription = `${rolePing} ${discussion.body}`;
+        // Truncate description to respect Discord's 4096 character limit for embed descriptions
+        // Account for the ping role and a space
+        const maxBodyLength = 4096 - rolePing.length - 1;
+        let truncatedBody = discussion.body || "";
+        if (truncatedBody.length > maxBodyLength) {
+            truncatedBody = truncatedBody.substring(0, maxBodyLength - 3) + '...';
+        }
+        
+        embedDescription = `${rolePing} ${truncatedBody}`;
     } else if (category === "Ideas and suggestions") {
         webhookUrl = WEBHOOKS.suggestions;
         username = "GitHub Suggestions";
         titlePrefix = "GitHub Suggestion";
         useThread = true;
+        
+        // Truncate description to respect Discord's 4096 character limit for embed descriptions
+        if (embedDescription.length > 4096) {
+            embedDescription = embedDescription.substring(0, 4093) + '...';
+        }
     } else {
         return new Response("Ignored", { status: 200 });
     }
+
+    // Truncate title to respect Discord's 256 character limit for embed titles
+    const fullTitle = `${titlePrefix}: ${discussion.title}`;
+    const embedTitle = fullTitle.length > 256 ? fullTitle.substring(0, 253) + '...' : fullTitle;
 
     // Create the Discord payload with the discussion details
     const payload = {
@@ -145,7 +162,7 @@ async function handleDiscussion(discussion) {
         avatar_url: AVATAR_URL,  // Using avatar URL from config.js
         embeds: [
             {
-                title: `${titlePrefix}: ${discussion.title}`,
+                title: embedTitle,
                 description: embedDescription,
                 url: discussion.html_url,
                 color: 1190012,
