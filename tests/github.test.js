@@ -161,6 +161,148 @@ describe('GitHub Module', () => {
         expect(postToDiscord).not.toHaveBeenCalled();
       });
 
+      it('should truncate long discussion bodies for announcements', async () => {
+        // Create a discussion body that exceeds Discord's 4096 character limit
+        const longBody = 'A'.repeat(4100);
+        const discussionWithLongBody = {
+          ...baseDiscussion,
+          body: longBody
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'created',
+            discussion: discussionWithLongBody
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/news',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                description: expect.stringMatching(/^<@&111> A+\.\.\.$/),
+              })
+            ])
+          })
+        );
+
+        // Verify the description length is within Discord's limits (4096 characters)
+        const call = postToDiscord.mock.calls[0];
+        const description = call[1].embeds[0].description;
+        expect(description.length).toBeLessThanOrEqual(4096);
+      });
+
+      it('should truncate long discussion bodies for monthly updates', async () => {
+        // Create a discussion body that exceeds Discord's 4096 character limit
+        const longBody = 'B'.repeat(4100);
+        const discussionWithLongBodyAndLabel = {
+          ...baseDiscussion,
+          body: longBody,
+          labels: [{ name: 'Monthly Updates' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'created',
+            discussion: discussionWithLongBodyAndLabel
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/news',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                description: expect.stringMatching(/^<@&222> B+\.\.\.$/),
+              })
+            ])
+          })
+        );
+
+        // Verify the description length is within Discord's limits (4096 characters)
+        const call = postToDiscord.mock.calls[0];
+        const description = call[1].embeds[0].description;
+        expect(description.length).toBeLessThanOrEqual(4096);
+      });
+
+      it('should truncate long discussion titles', async () => {
+        // Create a title that exceeds Discord's 256 character limit
+        const longTitle = 'T'.repeat(300);
+        const discussionWithLongTitle = {
+          ...baseDiscussion,
+          title: longTitle
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'created',
+            discussion: discussionWithLongTitle
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/news',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: expect.stringMatching(/^GitHub Announcement: T+\.\.\.$/),
+              })
+            ])
+          })
+        );
+
+        // Verify the title length is within Discord's limits (256 characters)
+        const call = postToDiscord.mock.calls[0];
+        const title = call[1].embeds[0].title;
+        expect(title.length).toBeLessThanOrEqual(256);
+      });
+
+      it('should truncate long suggestion discussion bodies', async () => {
+        // Create a discussion body that exceeds Discord's 4096 character limit
+        const longBody = 'S'.repeat(4100);
+        const suggestionWithLongBody = {
+          ...baseDiscussion,
+          body: longBody,
+          category: { name: 'Ideas and suggestions' }
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'created',
+            discussion: suggestionWithLongBody
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/suggestions',
+          expect.objectContaining({
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                description: expect.stringMatching(/^S+\.\.\.$/),
+              })
+            ])
+          })
+        );
+
+        // Verify the description length is within Discord's limits (4096 characters)
+        const call = postToDiscord.mock.calls[0];
+        const description = call[1].embeds[0].description;
+        expect(description.length).toBeLessThanOrEqual(4096);
+      });
+
       it('should ignore discussions from unsupported categories', async () => {
         const unsupportedDiscussion = {
           ...baseDiscussion,
