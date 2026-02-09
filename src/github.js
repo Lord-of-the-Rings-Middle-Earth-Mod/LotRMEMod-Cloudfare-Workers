@@ -71,7 +71,7 @@ async function handleWiki(pages, sender) {
         type: 2, // Button
         style: 5, // Link style
         label: "Home",
-        url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/wiki"
+        url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/VExt-Mod/wiki"
     });
 
     // Add buttons for edited and created pages (max 5 buttons per action row in Discord)
@@ -196,7 +196,7 @@ async function handleRelease(release) {
                 description: `${PINGS.release} A new Release has dropped.`,
                 fields: [
                     { name: "GitHub", value: `[Download](${release.html_url})`, inline: true },
-                    { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md)`, inline: true }
+                    { name: "Changelog", value: `[Details](https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/VExt-Mod/blob/master/CHANGELOG.md)`, inline: true }
                 ],
                 footer: { text: FOOTER_TEXT }  // Using footer text from config.js
             }
@@ -229,7 +229,7 @@ async function handleRelease(release) {
         embeds: [
             {
                 ...commonEmbed,
-                url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/blob/master/CHANGELOG.md",
+                url: "https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/VExt-Mod/blob/master/CHANGELOG.md",
                 description: release.body,
             }
         ]
@@ -400,7 +400,7 @@ async function handlePullRequest(pullRequest, action, requestedReviewer) {
     }
 
     // Create the Discord payload
-    const prUrl = pullRequest.html_url || `https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/Lord-of-the-Rings-Middle-Earth-Mod/pull/${prNumber}`;
+    const prUrl = pullRequest.html_url || `https://github.com/Lord-of-the-Rings-Middle-Earth-Mod/VExt-Mod/pull/${prNumber}`;
     
     // Prepare embed fields
     const embedFields = [];
