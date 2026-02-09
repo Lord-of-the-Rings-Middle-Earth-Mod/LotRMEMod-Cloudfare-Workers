@@ -132,12 +132,11 @@ async function handleDiscussion(discussion) {
         // Truncate description to respect Discord's 4096 character limit for embed descriptions
         // Account for the ping role and a space
         const maxBodyLength = 4096 - rolePing.length - 1;
-        let truncatedBody = discussion.body || "";
-        if (truncatedBody.length > maxBodyLength) {
-            truncatedBody = truncatedBody.substring(0, maxBodyLength - 3) + '...';
+        if (embedDescription.length >= maxBodyLength) {
+            embedDescription = embedDescription.substring(0, maxBodyLength - 3) + '...';
         }
         
-        embedDescription = `${rolePing} ${truncatedBody}`;
+        embedDescription = `${rolePing} ${embedDescription}`;
     } else if (category === "Ideas and suggestions") {
         webhookUrl = WEBHOOKS.suggestions;
         username = "GitHub Suggestions";
@@ -145,7 +144,7 @@ async function handleDiscussion(discussion) {
         useThread = true;
         
         // Truncate description to respect Discord's 4096 character limit for embed descriptions
-        if (embedDescription.length > 4096) {
+        if (embedDescription.length >= 4096) {
             embedDescription = embedDescription.substring(0, 4093) + '...';
         }
     } else {
