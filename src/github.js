@@ -264,6 +264,38 @@ async function handleRelease(release) {
     }
 }
 
+// Helper function to check if issue has asset-related labels
+function hasAssetLabels(labels) {
+    if (!labels || !Array.isArray(labels)) {
+        return false;
+    }
+    const assetLabelNames = ["needs texture", "needs models", "needs sounds", "needs animations"];
+    return labels.some(label => assetLabelNames.includes(label.name.toLowerCase()));
+}
+
+// Helper function to map GitHub labels to Discord tags
+function getDiscordTags(labels) {
+    if (!labels || !Array.isArray(labels)) {
+        return [];
+    }
+    
+    const tags = [];
+    const labelNames = labels.map(l => l.name.toLowerCase());
+    
+    // Map labels to Discord tags
+    if (labelNames.includes("needs texture") || labelNames.includes("needs models")) {
+        tags.push(TAGS.textureAndModel);
+    }
+    if (labelNames.includes("needs animations")) {
+        tags.push(TAGS.animations);
+    }
+    if (labelNames.includes("needs sounds")) {
+        tags.push(TAGS.sounds);
+    }
+    
+    return tags;
+}
+
 // Function to handle GitHub Issues
 async function handleIssue(issue) {
     if (!issue) {
@@ -337,7 +369,55 @@ async function handleIssue(issue) {
         ]
     };
 
-    return postToDiscord(WEBHOOKS.issues, payload);
+    // Post to the regular issues channel
+    const issuesResponse = await postToDiscord(WEBHOOKS.issues, payload);
+    
+    // Check if issue has asset-related labels
+    if (hasAssetLabels(issue.labels)) {
+        console.log('Issue has asset labels, posting to contributions channel');
+        
+        // Get Discord tags based on GitHub labels
+        const discordTags = getDiscordTags(issue.labels);
+        
+        // Create a thread-based payload for the contributions forum channel
+        const contributionsPayload = {
+            username: "LotR ME Mod Issues",
+            avatar_url: AVATAR_URL,
+            thread_name: title,
+            applied_tags: discordTags,
+            embeds: [
+                {
+                    title: title,
+                    author: {
+                        name: issue.user?.login || 'Unknown User'
+                    },
+                    description: description,
+                    timestamp: issue.created_at,
+                    footer: {
+                        text: "This issue was created on GitHub"
+                    }
+                }
+            ],
+            components: [
+                {
+                    type: 1, // Action Row
+                    components: [
+                        {
+                            type: 2, // Button
+                            style: 5, // Link style
+                            label: "Issue on GitHub",
+                            url: issue.html_url
+                        }
+                    ]
+                }
+            ]
+        };
+        
+        // Post to contributions channel and return that response
+        return postToDiscord(WEBHOOKS.contributions, contributionsPayload);
+    }
+    
+    return issuesResponse;
 }
 
 // Function to handle GitHub Pull Requests

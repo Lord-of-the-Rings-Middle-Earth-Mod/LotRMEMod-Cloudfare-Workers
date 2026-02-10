@@ -13,6 +13,7 @@ describe('Config Module', () => {
       expect(WEBHOOKS.issues).toBeDefined();
       expect(WEBHOOKS.prs).toBeDefined();
       expect(WEBHOOKS.workflows).toBeDefined();
+      expect(WEBHOOKS.contributions).toBeDefined();
     });
 
     it('should have valid Discord webhook URLs', () => {
@@ -47,6 +48,15 @@ describe('Config Module', () => {
       expect(TAGS).toBeDefined();
       expect(TAGS.suggestions).toBeDefined();
       expect(TAGS.suggestions).toMatch(/^\d+$/);
+    });
+
+    it('should have asset-related tags defined', () => {
+      expect(TAGS.textureAndModel).toBeDefined();
+      expect(TAGS.textureAndModel).toMatch(/^\d+$/);
+      expect(TAGS.animations).toBeDefined();
+      expect(TAGS.animations).toMatch(/^\d+$/);
+      expect(TAGS.sounds).toBeDefined();
+      expect(TAGS.sounds).toMatch(/^\d+$/);
     });
   });
 

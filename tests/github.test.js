@@ -14,7 +14,8 @@ vi.mock('../src/config.js', () => ({
     issues: 'https://discord.com/api/webhooks/123/issues',
     prs: 'https://discord.com/api/webhooks/123/prs',
     wiki: 'https://discord.com/api/webhooks/123/wiki',
-    workflows: 'https://discord.com/api/webhooks/123/workflows'
+    workflows: 'https://discord.com/api/webhooks/123/workflows',
+    contributions: 'https://discord.com/api/webhooks/123/contributions'
   },
   PINGS: {
     news: '<@&111>',
@@ -24,7 +25,10 @@ vi.mock('../src/config.js', () => ({
     contributors: '<@&555>'
   },
   TAGS: {
-    suggestions: '1283842398308532256'
+    suggestions: '1283842398308532256',
+    textureAndModel: '1283839733826584738',
+    animations: '1283839866878296074',
+    sounds: '1332372252368310353'
   },
   AVATAR_URL: 'https://gravatar.com/test.jpeg',
   FOOTER_TEXT: 'This post originates from GitHub.',
@@ -506,6 +510,236 @@ describe('GitHub Module', () => {
         expect(result.status).toBe(200);
         expect(await result.text()).toBe('Ignored');
         expect(postToDiscord).not.toHaveBeenCalled();
+      });
+
+      it('should post to contributions channel when issue has "needs texture" label', async () => {
+        const issueWithTexture = {
+          ...baseIssue,
+          labels: [{ name: 'needs texture' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithTexture
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        // Should call postToDiscord twice - once for issues channel, once for contributions
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // First call to issues channel
+        expect(postToDiscord).toHaveBeenNthCalledWith(1,
+          'https://discord.com/api/webhooks/123/issues',
+          expect.objectContaining({
+            username: 'LotR ME Mod Issues'
+          })
+        );
+        
+        // Second call to contributions channel with thread
+        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            username: 'LotR ME Mod Issues',
+            thread_name: 'Test Issue',
+            applied_tags: ['1283839733826584738'], // textureAndModel tag
+            embeds: expect.arrayContaining([
+              expect.objectContaining({
+                title: 'Test Issue',
+                description: 'This is a test issue'
+              })
+            ]),
+            components: expect.arrayContaining([
+              expect.objectContaining({
+                type: 1,
+                components: expect.arrayContaining([
+                  expect.objectContaining({
+                    type: 2,
+                    style: 5,
+                    label: 'Issue on GitHub',
+                    url: 'https://github.com/test/test/issues/1'
+                  })
+                ])
+              })
+            ])
+          })
+        );
+      });
+
+      it('should post to contributions channel when issue has "needs models" label', async () => {
+        const issueWithModels = {
+          ...baseIssue,
+          labels: [{ name: 'needs models' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithModels
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // Contributions channel should have textureAndModel tag
+        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            applied_tags: ['1283839733826584738'] // textureAndModel tag
+          })
+        );
+      });
+
+      it('should post to contributions channel when issue has "needs sounds" label', async () => {
+        const issueWithSounds = {
+          ...baseIssue,
+          labels: [{ name: 'needs sounds' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithSounds
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // Contributions channel should have sounds tag
+        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            applied_tags: ['1332372252368310353'] // sounds tag
+          })
+        );
+      });
+
+      it('should post to contributions channel when issue has "needs animations" label', async () => {
+        const issueWithAnimations = {
+          ...baseIssue,
+          labels: [{ name: 'needs animations' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithAnimations
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // Contributions channel should have animations tag
+        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            applied_tags: ['1283839866878296074'] // animations tag
+          })
+        );
+      });
+
+      it('should post to contributions channel with multiple tags when issue has multiple asset labels', async () => {
+        const issueWithMultipleAssets = {
+          ...baseIssue,
+          labels: [
+            { name: 'needs texture' },
+            { name: 'needs sounds' },
+            { name: 'needs animations' },
+            { name: 'bug' } // non-asset label should be ignored for tagging
+          ]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithMultipleAssets
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // Contributions channel should have all three tags
+        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            applied_tags: [
+              '1283839733826584738', // textureAndModel
+              '1283839866878296074', // animations
+              '1332372252368310353'  // sounds
+            ]
+          })
+        );
+      });
+
+      it('should not post to contributions channel when issue has no asset labels', async () => {
+        const issueWithoutAssets = {
+          ...baseIssue,
+          labels: [{ name: 'bug' }, { name: 'enhancement' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithoutAssets
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        // Should only call postToDiscord once for issues channel
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/issues',
+          expect.objectContaining({
+            username: 'LotR ME Mod Issues'
+          })
+        );
+      });
+
+      it('should handle case-insensitive asset label matching', async () => {
+        const issueWithMixedCase = {
+          ...baseIssue,
+          labels: [{ name: 'Needs Texture' }, { name: 'NEEDS SOUNDS' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithMixedCase
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // Should recognize mixed case labels and apply correct tags
+        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            applied_tags: [
+              '1283839733826584738', // textureAndModel
+              '1332372252368310353'  // sounds
+            ]
+          })
+        );
       });
     });
 

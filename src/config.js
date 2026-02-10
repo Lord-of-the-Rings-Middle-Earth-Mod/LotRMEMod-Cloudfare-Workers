@@ -8,7 +8,8 @@ export const WEBHOOKS = {
   issues: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
   prs: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
   wiki: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
-  workflows: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS"
+  workflows: "https://discord.com/api/webhooks/1400087209377271839/3gN5zBFE3ecY-Aq_NqhauIM9oaFFh-umKvpawu656kyYNVFOMIWolqet0iMAIIXHviCS",
+  contributions: "https://discord.com/api/webhooks/1470723200106102896/1jMxp0gt6vch9iRrRfI-YsIFfyVuczW0_zmq3QhW3ueOHa2mb7pPW9DdAM0NYAmqB4Yh"
 };
 
 export const PINGS = {
@@ -22,7 +23,10 @@ export const PINGS = {
 
 // Discord tags for specific post types
 export const TAGS = {
-  suggestions: "1283842398308532256"
+  suggestions: "1283842398308532256",
+  textureAndModel: "1283839733826584738",
+  animations: "1283839866878296074",
+  sounds: "1332372252368310353"
 };
 
 // Avatar URL to use in Discord messages
