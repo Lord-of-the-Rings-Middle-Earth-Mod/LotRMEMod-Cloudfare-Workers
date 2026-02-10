@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from '../src/config.js';
+import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, KV_NAMESPACE } from '../src/config.js';
 
 describe('Config Module', () => {
   describe('WEBHOOKS', () => {
@@ -13,6 +13,7 @@ describe('Config Module', () => {
       expect(WEBHOOKS.issues).toBeDefined();
       expect(WEBHOOKS.prs).toBeDefined();
       expect(WEBHOOKS.workflows).toBeDefined();
+      expect(WEBHOOKS.contributions).toBeDefined();
     });
 
     it('should have valid Discord webhook URLs', () => {
@@ -48,6 +49,15 @@ describe('Config Module', () => {
       expect(TAGS.suggestions).toBeDefined();
       expect(TAGS.suggestions).toMatch(/^\d+$/);
     });
+
+    it('should have asset-related tags defined', () => {
+      expect(TAGS.textureAndModel).toBeDefined();
+      expect(TAGS.textureAndModel).toMatch(/^\d+$/);
+      expect(TAGS.animations).toBeDefined();
+      expect(TAGS.animations).toMatch(/^\d+$/);
+      expect(TAGS.sounds).toBeDefined();
+      expect(TAGS.sounds).toMatch(/^\d+$/);
+    });
   });
 
   describe('AVATAR_URL', () => {
@@ -61,6 +71,13 @@ describe('Config Module', () => {
     it('should have default footer text', () => {
       expect(FOOTER_TEXT).toBeDefined();
       expect(FOOTER_TEXT).toBe("This post originates from GitHub.");
+    });
+  });
+
+  describe('KV_NAMESPACE', () => {
+    it('should have KV namespace defined', () => {
+      expect(KV_NAMESPACE).toBeDefined();
+      expect(KV_NAMESPACE).toBe("FABRIC_KV");
     });
   });
 });

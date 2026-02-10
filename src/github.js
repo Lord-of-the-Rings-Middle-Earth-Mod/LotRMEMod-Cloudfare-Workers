@@ -1,5 +1,6 @@
 import { postToDiscord } from './discord.js'; // For sending messages to Discord
-import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
+import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO, KV_NAMESPACE } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
+import { readFromKV, saveToKV } from './kvutils.js'; // For KV storage operations
 
 export async function handleGitHubWebhook(request, env) {
     const data = await request.json();
@@ -25,8 +26,8 @@ export async function handleGitHubWebhook(request, env) {
         return handleRelease(data.release);
     }
     // If it's an issue, handle it
-    else if (data.issue && data.action == "opened") {
-        return handleIssue(data.issue);
+    else if (data.issue && (data.action == "opened" || data.action == "labeled")) {
+        return handleIssue(data.issue, data.action, env);
     }
     // If it's a pull request, handle it
     else if (data.pull_request) {
@@ -264,8 +265,40 @@ async function handleRelease(release) {
     }
 }
 
+// Helper function to check if issue has asset-related labels
+function hasAssetLabels(labels) {
+    if (!labels || !Array.isArray(labels)) {
+        return false;
+    }
+    const assetLabelNames = ["needs texture", "needs models", "needs sounds", "needs animations"];
+    return labels.some(label => assetLabelNames.includes(label.name.toLowerCase()));
+}
+
+// Helper function to map GitHub labels to Discord tags
+function getDiscordTags(labels) {
+    if (!labels || !Array.isArray(labels)) {
+        return [];
+    }
+    
+    const tags = [];
+    const labelNames = labels.map(l => l.name.toLowerCase());
+    
+    // Map labels to Discord tags
+    if (labelNames.includes("needs texture") || labelNames.includes("needs models")) {
+        tags.push(TAGS.textureAndModel);
+    }
+    if (labelNames.includes("needs animations")) {
+        tags.push(TAGS.animations);
+    }
+    if (labelNames.includes("needs sounds")) {
+        tags.push(TAGS.sounds);
+    }
+    
+    return tags;
+}
+
 // Function to handle GitHub Issues
-async function handleIssue(issue) {
+async function handleIssue(issue, action, env) {
     if (!issue) {
         console.error('handleIssue called with null or undefined issue');
         return new Response("Invalid issue data", { status: 400 });
@@ -284,60 +317,139 @@ async function handleIssue(issue) {
         console.log(`Using current time as fallback: ${issue.created_at}`);
     }
     
-    // Format labels - convert array to string
-    let labelsText = "None";
-    if (issue.labels && issue.labels.length > 0) {
-        labelsText = issue.labels.map(label => label.name).join(", ");
-    }
-    
     // Single consolidated log with essential information
-    console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url}`);
+    console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url} (action: ${action})`);
 
-    // Create the Discord payload with the issue details
-    // Ensure values don't exceed Discord limits
+    // Prepare common data used by both channels
     const title = issue.title.length > 256 ? issue.title.substring(0, 253) + '...' : issue.title;
     const description = issue.body ? 
         (issue.body.length > 4096 ? issue.body.substring(0, 4093) + '...' : issue.body) : 
         "No description provided";
     
-    const payload = {
-        username: "LotR ME Mod Issues",
-        avatar_url: AVATAR_URL,
-        embeds: [
-            {
-                title: title,
-                author: {
-                    name: issue.user?.login || 'Unknown User'
-                },
-                description: description,
-                fields: [
-                    {
-                        name: "Labels",
-                        value: labelsText
+    // Only post to issues channel if action is "opened"
+    let issuesResponse;
+    if (action === "opened") {
+        // Format labels - convert array to string
+        let labelsText = "None";
+        if (issue.labels && issue.labels.length > 0) {
+            labelsText = issue.labels.map(label => label.name).join(", ");
+        }
+        
+        // Create the Discord payload with the issue details
+        const payload = {
+            username: "LotR ME Mod Issues",
+            avatar_url: AVATAR_URL,
+            embeds: [
+                {
+                    title: title,
+                    author: {
+                        name: issue.user?.login || 'Unknown User'
+                    },
+                    description: description,
+                    fields: [
+                        {
+                            name: "Labels",
+                            value: labelsText
+                        }
+                    ],
+                    timestamp: issue.created_at,
+                    footer: {
+                        text: "This issue was created on GitHub"
                     }
-                ],
-                timestamp: issue.created_at,
-                footer: {
-                    text: "This issue was created on GitHub"
                 }
-            }
-        ],
-        components: [
-            {
-                type: 1, // Action Row
-                components: [
-                    {
-                        type: 2, // Button
-                        style: 5, // Link style
-                        label: "Issue on GitHub",
-                        url: issue.html_url
+            ],
+            components: [
+                {
+                    type: 1, // Action Row
+                    components: [
+                        {
+                            type: 2, // Button
+                            style: 5, // Link style
+                            label: "Issue on GitHub",
+                            url: issue.html_url
+                        }
+                    ]
+                }
+            ]
+        };
+        
+        issuesResponse = await postToDiscord(WEBHOOKS.issues, payload);
+    } else {
+        // For "labeled" action, we don't post to issues channel
+        issuesResponse = new Response("Success", { status: 200 });
+    }
+    
+    // Check if issue has asset-related labels
+    if (hasAssetLabels(issue.labels)) {
+        // Check KV storage to see if we've already posted this issue to contributions
+        const kvKey = `contributions_issue_${issue.number}`;
+        const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
+        
+        if (alreadyPosted) {
+            console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
+            return issuesResponse;
+        }
+        
+        console.log(`Issue #${issue.number || 'unknown'} "${title}" has asset labels, posting to contributions channel`);
+        
+        // Get Discord tags based on GitHub labels
+        const discordTags = getDiscordTags(issue.labels);
+        
+        // Create a thread-based payload for the contributions forum channel
+        const contributionsPayload = {
+            username: "LotR ME Mod Issues",
+            avatar_url: AVATAR_URL,
+            thread_name: title,
+            applied_tags: discordTags,
+            embeds: [
+                {
+                    title: title,
+                    author: {
+                        name: issue.user?.login || 'Unknown User'
+                    },
+                    description: description,
+                    timestamp: issue.created_at,
+                    footer: {
+                        text: "This issue was created on GitHub"
                     }
-                ]
-            }
-        ]
-    };
-
-    return postToDiscord(WEBHOOKS.issues, payload);
+                }
+            ],
+            components: [
+                {
+                    type: 1, // Action Row
+                    components: [
+                        {
+                            type: 2, // Button
+                            style: 5, // Link style
+                            label: "Issue on GitHub",
+                            url: issue.html_url
+                        }
+                    ]
+                }
+            ]
+        };
+        
+        // Post to contributions channel
+        const contributionsResponse = await postToDiscord(WEBHOOKS.contributions, contributionsPayload);
+        
+        // If successful, store in KV to prevent duplicates
+        if (contributionsResponse.status === 200 && env) {
+            await saveToKV(env, KV_NAMESPACE, kvKey, {
+                issueNumber: issue.number,
+                title: issue.title,
+                postedAt: new Date().toISOString()
+            });
+            console.log(`Stored issue #${issue.number} in KV storage to prevent duplicates`);
+        }
+        
+        // Return contributions response, but log if issues post succeeded
+        if (action === "opened" && issuesResponse.status === 200 && contributionsResponse.status !== 200) {
+            console.log('Issue posted to issues channel successfully, but contributions channel post failed');
+        }
+        return contributionsResponse;
+    }
+    
+    return issuesResponse;
 }
 
 // Function to handle GitHub Pull Requests
