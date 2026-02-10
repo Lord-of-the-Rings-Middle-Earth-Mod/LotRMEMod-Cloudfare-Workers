@@ -1,5 +1,5 @@
 import { postToDiscord } from './discord.js'; // For sending messages to Discord
-import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
+import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO, KV_NAMESPACE } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
 import { readFromKV, saveToKV } from './kvutils.js'; // For KV storage operations
 
 export async function handleGitHubWebhook(request, env) {
@@ -383,7 +383,7 @@ async function handleIssue(issue, action, env) {
     if (hasAssetLabels(issue.labels)) {
         // Check KV storage to see if we've already posted this issue to contributions
         const kvKey = `contributions_issue_${issue.number}`;
-        const alreadyPosted = env ? await readFromKV(env, 'FABRIC_KV', kvKey) : null;
+        const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
         
         if (alreadyPosted) {
             console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
@@ -434,7 +434,7 @@ async function handleIssue(issue, action, env) {
         
         // If successful, store in KV to prevent duplicates
         if (contributionsResponse.status === 200 && env) {
-            await saveToKV(env, 'FABRIC_KV', kvKey, {
+            await saveToKV(env, KV_NAMESPACE, kvKey, {
                 issueNumber: issue.number,
                 title: issue.title,
                 postedAt: new Date().toISOString()

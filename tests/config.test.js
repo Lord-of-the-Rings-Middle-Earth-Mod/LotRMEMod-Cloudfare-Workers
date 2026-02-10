@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT } from '../src/config.js';
+import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, KV_NAMESPACE } from '../src/config.js';
 
 describe('Config Module', () => {
   describe('WEBHOOKS', () => {
@@ -71,6 +71,13 @@ describe('Config Module', () => {
     it('should have default footer text', () => {
       expect(FOOTER_TEXT).toBeDefined();
       expect(FOOTER_TEXT).toBe("This post originates from GitHub.");
+    });
+  });
+
+  describe('KV_NAMESPACE', () => {
+    it('should have KV namespace defined', () => {
+      expect(KV_NAMESPACE).toBeDefined();
+      expect(KV_NAMESPACE).toBe("FABRIC_KV");
     });
   });
 });

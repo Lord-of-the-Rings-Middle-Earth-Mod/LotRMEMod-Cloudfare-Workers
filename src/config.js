@@ -29,6 +29,9 @@ export const TAGS = {
   sounds: "1332372252368310353"
 };
 
+// KV namespace for storage
+export const KV_NAMESPACE = "FABRIC_KV";
+
 // Avatar URL to use in Discord messages
 export const AVATAR_URL = "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256";
 

@@ -40,7 +40,8 @@ vi.mock('../src/config.js', () => ({
   GITHUB_REPO: {
     owner: 'test-owner',
     repo: 'test-repo'
-  }
+  },
+  KV_NAMESPACE: 'FABRIC_KV'
 }));
 
 import { postToDiscord } from '../src/discord.js';
@@ -839,7 +840,7 @@ describe('GitHub Module', () => {
         expect(saveToKV).not.toHaveBeenCalled();
       });
 
-      it('should post to contributions on opened action even if no env provided', async () => {
+      it('should post to both channels on opened action without env parameter (backward compatibility)', async () => {
         const issueWithAssetLabel = {
           ...baseIssue,
           number: 43,
