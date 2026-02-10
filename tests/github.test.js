@@ -880,6 +880,155 @@ describe('GitHub Module', () => {
         expect(readFromKV).not.toHaveBeenCalled();
         expect(saveToKV).not.toHaveBeenCalled();
       });
+
+      it('should prevent duplicate posts when multiple labels trigger simultaneous webhooks (race condition)', async () => {
+        const issueWithAssetLabel = {
+          ...baseIssue,
+          number: 44,
+          labels: [{ name: 'needs texture' }]
+        };
+
+        const mockEnv = {
+          FABRIC_KV: {}
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'labeled',
+            issue: issueWithAssetLabel
+          })
+        };
+
+        // Mock KV to return a recently posted entry (within 30 seconds)
+        const recentTimestamp = new Date(Date.now() - 5000).toISOString(); // 5 seconds ago
+        readFromKV.mockResolvedValue({
+          issueNumber: 44,
+          title: 'Test Issue',
+          postedAt: recentTimestamp,
+          status: 'pending'
+        });
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Should not post to Discord since it was recently posted (duplicate webhook)
+        expect(postToDiscord).not.toHaveBeenCalled();
+        
+        // Should check KV storage
+        expect(readFromKV).toHaveBeenCalledWith(mockEnv, 'FABRIC_KV', 'contributions_issue_44');
+        
+        // Should not save to KV storage again
+        expect(saveToKV).not.toHaveBeenCalled();
+      });
+
+      it('should write pending status to KV before posting to prevent race conditions', async () => {
+        const issueWithAssetLabel = {
+          ...baseIssue,
+          number: 45,
+          labels: [{ name: 'needs models' }]
+        };
+
+        const mockEnv = {
+          FABRIC_KV: {}
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'labeled',
+            issue: issueWithAssetLabel
+          })
+        };
+
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Should save to KV with 'pending' status BEFORE posting to Discord
+        expect(saveToKV).toHaveBeenCalledWith(
+          mockEnv,
+          'FABRIC_KV',
+          'contributions_issue_45',
+          expect.objectContaining({
+            issueNumber: 45,
+            title: 'Test Issue',
+            status: 'pending'
+          })
+        );
+        
+        // Should post to Discord
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            thread_name: 'Test Issue'
+          })
+        );
+        
+        // Should update KV with 'posted' status after successful Discord post
+        expect(saveToKV).toHaveBeenCalledWith(
+          mockEnv,
+          'FABRIC_KV',
+          'contributions_issue_45',
+          expect.objectContaining({
+            issueNumber: 45,
+            title: 'Test Issue',
+            status: 'posted'
+          })
+        );
+        
+        // saveToKV should be called twice: once for pending, once for posted
+        expect(saveToKV).toHaveBeenCalledTimes(2);
+      });
+
+      it('should delete pending entry if posting to Discord fails', async () => {
+        const issueWithAssetLabel = {
+          ...baseIssue,
+          number: 46,
+          labels: [{ name: 'needs sounds' }]
+        };
+
+        const mockEnv = {
+          FABRIC_KV: {
+            delete: vi.fn()
+          }
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'labeled',
+            issue: issueWithAssetLabel
+          })
+        };
+
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+        
+        // Mock Discord post to fail
+        postToDiscord.mockResolvedValueOnce(new Response('Error', { status: 500 }));
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(500);
+        
+        // Should save pending status first
+        expect(saveToKV).toHaveBeenCalledWith(
+          mockEnv,
+          'FABRIC_KV',
+          'contributions_issue_46',
+          expect.objectContaining({
+            status: 'pending'
+          })
+        );
+        
+        // Should delete the pending entry after posting fails
+        expect(mockEnv.FABRIC_KV.delete).toHaveBeenCalledWith('contributions_issue_46');
+        
+        // saveToKV should only be called once for pending (not for posted)
+        expect(saveToKV).toHaveBeenCalledTimes(1);
+      });
     });
 
     describe('Pull Request handling', () => {

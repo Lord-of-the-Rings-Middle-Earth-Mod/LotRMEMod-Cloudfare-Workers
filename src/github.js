@@ -410,8 +410,33 @@ async function handleIssueLabeled(issue, env) {
     const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
     
     if (alreadyPosted) {
+        // Check if the post was recent (within 30 seconds) to handle race conditions
+        // when multiple labels trigger simultaneous webhooks
+        const postedTime = new Date(alreadyPosted.postedAt).getTime();
+        const now = Date.now();
+        const timeDiffSeconds = (now - postedTime) / 1000;
+        
+        // If posted within the last 30 seconds, it's likely a duplicate webhook from multiple labels
+        if (timeDiffSeconds < 30) {
+            console.log(`Issue #${issue.number} "${title}" was posted ${timeDiffSeconds.toFixed(1)}s ago, skipping duplicate`);
+            return new Response("Success", { status: 200 });
+        }
+        
+        // If it was posted more than 30 seconds ago, log but still skip to prevent re-posting
         console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
         return new Response("Success", { status: 200 });
+    }
+    
+    // Immediately write to KV to prevent race conditions from simultaneous webhooks
+    // This creates a lock so other concurrent requests will see this entry
+    if (env) {
+        await saveToKV(env, KV_NAMESPACE, kvKey, {
+            issueNumber: issue.number,
+            title: issue.title,
+            postedAt: new Date().toISOString(),
+            status: 'pending'
+        });
+        console.log(`Marked issue #${issue.number} as pending in KV storage to prevent race conditions`);
     }
     
     console.log(`Issue #${issue.number || 'unknown'} "${title}" has asset labels, posting to contributions channel`);
@@ -456,14 +481,19 @@ async function handleIssueLabeled(issue, env) {
     // Post to contributions channel
     const contributionsResponse = await postToDiscord(WEBHOOKS.contributions, contributionsPayload);
     
-    // If successful, store in KV to prevent duplicates
+    // Update KV storage with final status
     if (contributionsResponse.status === 200 && env) {
         await saveToKV(env, KV_NAMESPACE, kvKey, {
             issueNumber: issue.number,
             title: issue.title,
-            postedAt: new Date().toISOString()
+            postedAt: new Date().toISOString(),
+            status: 'posted'
         });
-        console.log(`Stored issue #${issue.number} in KV storage to prevent duplicates`);
+        console.log(`Updated issue #${issue.number} status to 'posted' in KV storage`);
+    } else if (env) {
+        // If posting failed, remove the pending entry to allow retry
+        await env[KV_NAMESPACE].delete(kvKey);
+        console.log(`Removed pending entry for issue #${issue.number} due to posting failure`);
     }
     
     return contributionsResponse;
