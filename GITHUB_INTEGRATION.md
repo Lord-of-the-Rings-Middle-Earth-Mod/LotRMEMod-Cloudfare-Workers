@@ -115,7 +115,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
   - Includes issue title, author, description, and labels
   - Includes "Issue on GitHub" button linking to the original issue
   - Handles issues with or without labels and descriptions
-  - Only processes "opened" action events
+  - Processes "opened" and "labeled" action events
 
 - **Asset-Related Issues**:
   - Issues with asset labels also route to contributions forum channel
@@ -127,7 +127,9 @@ Before the integration can work, you must configure valid Discord webhook URLs i
     - "needs animations" → "Animations" tag (1283839866878296074)
     - "needs sounds" → "Sounds" tag (1332372252368310353)
   - **Multiple Labels**: Issues with multiple asset labels create one thread with multiple tags
-  - **Dual Posting**: Asset-related issues are posted to both the issues channel and contributions forum
+  - **Dual Posting**: Asset-related issues with "opened" action are posted to both the issues channel and contributions forum
+  - **Label Updates**: When labels are added to an existing issue ("labeled" action), only contributions forum is checked
+  - **Duplicate Prevention**: Uses KV storage to track which issues have been posted to contributions forum, preventing duplicate posts when labels are added later
 
 ### Discussions
 - **Announcements Category**: 
@@ -551,6 +553,8 @@ To test the GitHub integration:
    - Create a regular issue - should post to issues channel only
    - Create an issue with "needs texture" label - should post to both issues and contributions channels
    - Create an issue with multiple asset labels (e.g., "needs texture" and "needs sounds") - should create one thread with multiple tags in contributions channel
+   - Add an asset label to an existing issue - should post to contributions channel only (not issues channel) if not already posted
+   - Add an asset label to an issue that was already posted to contributions - should not create duplicate post
 4. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
 5. **Release Test**: Publish a new release in the repository
 6. **Pull Request Tests**: 
@@ -573,15 +577,35 @@ To test the GitHub integration:
 - `src/github.js`: Main GitHub webhook implementation
 - `src/config.js`: Webhook URLs and role ping configurations
 - `src/discord.js`: Shared Discord posting functionality
+- `src/kvutils.js`: KV storage utilities for duplicate prevention
 
 ## Dependencies
 
 - [Discord Integration](DISCORD_INTEGRATION.md) for message posting
+- [KV Storage](KV_STORAGE.md) for tracking posted contributions (duplicate prevention)
 - Configuration from `config.js` for webhooks and pings
 - Native Cloudflare Worker fetch API
 - No external libraries required
 
+## Data Storage
+
+### Contributions Tracking
+The integration uses Cloudflare KV storage to prevent duplicate posts to the contributions forum:
+
+- **Key Format**: `contributions_issue_{issue_number}`
+- **Value**: JSON object containing:
+  ```json
+  {
+    "issueNumber": 42,
+    "title": "Issue Title",
+    "postedAt": "2024-01-01T00:00:00.000Z"
+  }
+  ```
+- **Purpose**: Prevents duplicate posts when labels are added to existing issues
+- **Cleanup**: Entries persist indefinitely; manual cleanup may be needed for very old issues
+
 ## Related Documentation
 
 - [Discord Integration](DISCORD_INTEGRATION.md) - Shared Discord posting functionality
+- [KV Storage](KV_STORAGE.md) - Persistent storage utilities
 - [Configuration](README.md#configuration) - Webhook and role configuration details

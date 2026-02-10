@@ -1,5 +1,6 @@
 import { postToDiscord } from './discord.js'; // For sending messages to Discord
 import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
+import { readFromKV, saveToKV } from './kvutils.js'; // For KV storage operations
 
 export async function handleGitHubWebhook(request, env) {
     const data = await request.json();
@@ -25,8 +26,8 @@ export async function handleGitHubWebhook(request, env) {
         return handleRelease(data.release);
     }
     // If it's an issue, handle it
-    else if (data.issue && data.action == "opened") {
-        return handleIssue(data.issue);
+    else if (data.issue && (data.action == "opened" || data.action == "labeled")) {
+        return handleIssue(data.issue, data.action, env);
     }
     // If it's a pull request, handle it
     else if (data.pull_request) {
@@ -297,7 +298,7 @@ function getDiscordTags(labels) {
 }
 
 // Function to handle GitHub Issues
-async function handleIssue(issue) {
+async function handleIssue(issue, action, env) {
     if (!issue) {
         console.error('handleIssue called with null or undefined issue');
         return new Response("Invalid issue data", { status: 400 });
@@ -323,7 +324,7 @@ async function handleIssue(issue) {
     }
     
     // Single consolidated log with essential information
-    console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url}`);
+    console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url} (action: ${action})`);
 
     // Create the Discord payload with the issue details
     // Ensure values don't exceed Discord limits
@@ -369,11 +370,26 @@ async function handleIssue(issue) {
         ]
     };
 
-    // Post to the regular issues channel
-    const issuesResponse = await postToDiscord(WEBHOOKS.issues, payload);
+    // Only post to issues channel if action is "opened"
+    let issuesResponse;
+    if (action === "opened") {
+        issuesResponse = await postToDiscord(WEBHOOKS.issues, payload);
+    } else {
+        // For "labeled" action, we don't post to issues channel
+        issuesResponse = new Response("Success", { status: 200 });
+    }
     
     // Check if issue has asset-related labels
     if (hasAssetLabels(issue.labels)) {
+        // Check KV storage to see if we've already posted this issue to contributions
+        const kvKey = `contributions_issue_${issue.number}`;
+        const alreadyPosted = env ? await readFromKV(env, 'FABRIC_KV', kvKey) : null;
+        
+        if (alreadyPosted) {
+            console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
+            return issuesResponse;
+        }
+        
         console.log(`Issue #${issue.number || 'unknown'} "${title}" has asset labels, posting to contributions channel`);
         
         // Get Discord tags based on GitHub labels
@@ -416,8 +432,18 @@ async function handleIssue(issue) {
         // Post to contributions channel
         const contributionsResponse = await postToDiscord(WEBHOOKS.contributions, contributionsPayload);
         
+        // If successful, store in KV to prevent duplicates
+        if (contributionsResponse.status === 200 && env) {
+            await saveToKV(env, 'FABRIC_KV', kvKey, {
+                issueNumber: issue.number,
+                title: issue.title,
+                postedAt: new Date().toISOString()
+            });
+            console.log(`Stored issue #${issue.number} in KV storage to prevent duplicates`);
+        }
+        
         // Return contributions response, but log if issues post succeeded
-        if (issuesResponse.status === 200 && contributionsResponse.status !== 200) {
+        if (action === "opened" && issuesResponse.status === 200 && contributionsResponse.status !== 200) {
             console.log('Issue posted to issues channel successfully, but contributions channel post failed');
         }
         return contributionsResponse;

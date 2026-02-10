@@ -6,6 +6,11 @@ vi.mock('../src/discord.js', () => ({
   postToDiscord: vi.fn()
 }));
 
+vi.mock('../src/kvutils.js', () => ({
+  readFromKV: vi.fn(),
+  saveToKV: vi.fn()
+}));
+
 vi.mock('../src/config.js', () => ({
   WEBHOOKS: {
     news: 'https://discord.com/api/webhooks/123/news',
@@ -39,11 +44,14 @@ vi.mock('../src/config.js', () => ({
 }));
 
 import { postToDiscord } from '../src/discord.js';
+import { readFromKV, saveToKV } from '../src/kvutils.js';
 
 describe('GitHub Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     postToDiscord.mockResolvedValue({ status: 200 });
+    readFromKV.mockResolvedValue(null);
+    saveToKV.mockResolvedValue(undefined);
   });
 
   describe('handleGitHubWebhook', () => {
@@ -740,6 +748,153 @@ describe('GitHub Module', () => {
             ]
           })
         );
+      });
+
+      it('should handle labeled action and post to contributions if not already posted', async () => {
+        const issueWithAssetLabel = {
+          ...baseIssue,
+          number: 42,
+          labels: [{ name: 'needs texture' }]
+        };
+
+        const mockEnv = {
+          FABRIC_KV: {}
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'labeled',
+            issue: issueWithAssetLabel
+          })
+        };
+
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Should only post to contributions channel, not issues channel for "labeled" action
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
+        expect(postToDiscord).toHaveBeenCalledWith(
+          'https://discord.com/api/webhooks/123/contributions',
+          expect.objectContaining({
+            thread_name: 'Test Issue',
+            applied_tags: ['1283839733826584738']
+          })
+        );
+
+        // Should check KV storage
+        expect(readFromKV).toHaveBeenCalledWith(mockEnv, 'FABRIC_KV', 'contributions_issue_42');
+        
+        // Should save to KV storage after successful post
+        expect(saveToKV).toHaveBeenCalledWith(
+          mockEnv,
+          'FABRIC_KV',
+          'contributions_issue_42',
+          expect.objectContaining({
+            issueNumber: 42,
+            title: 'Test Issue'
+          })
+        );
+      });
+
+      it('should not post to contributions if already posted (labeled action)', async () => {
+        const issueWithAssetLabel = {
+          ...baseIssue,
+          number: 42,
+          labels: [{ name: 'needs sounds' }]
+        };
+
+        const mockEnv = {
+          FABRIC_KV: {}
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'labeled',
+            issue: issueWithAssetLabel
+          })
+        };
+
+        // Mock KV to return existing entry (already posted)
+        readFromKV.mockResolvedValue({
+          issueNumber: 42,
+          title: 'Test Issue',
+          postedAt: '2024-01-01T00:00:00.000Z'
+        });
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Should not post to any channel since already posted
+        expect(postToDiscord).not.toHaveBeenCalled();
+        
+        // Should check KV storage
+        expect(readFromKV).toHaveBeenCalledWith(mockEnv, 'FABRIC_KV', 'contributions_issue_42');
+        
+        // Should not save to KV storage again
+        expect(saveToKV).not.toHaveBeenCalled();
+      });
+
+      it('should post to contributions on opened action even if no env provided', async () => {
+        const issueWithAssetLabel = {
+          ...baseIssue,
+          number: 43,
+          labels: [{ name: 'needs animations' }]
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'opened',
+            issue: issueWithAssetLabel
+          })
+        };
+
+        // Call without env parameter
+        const result = await handleGitHubWebhook(mockRequest);
+
+        expect(result.status).toBe(200);
+        
+        // Should post to both channels
+        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        
+        // Should not try to read from KV without env
+        expect(readFromKV).not.toHaveBeenCalled();
+        
+        // Should not try to save to KV without env
+        expect(saveToKV).not.toHaveBeenCalled();
+      });
+
+      it('should ignore labeled action if no asset labels', async () => {
+        const issueWithoutAssetLabel = {
+          ...baseIssue,
+          labels: [{ name: 'bug' }, { name: 'help wanted' }]
+        };
+
+        const mockEnv = {
+          FABRIC_KV: {}
+        };
+
+        const mockRequest = {
+          json: vi.fn().mockResolvedValue({
+            action: 'labeled',
+            issue: issueWithoutAssetLabel
+          })
+        };
+
+        const result = await handleGitHubWebhook(mockRequest, mockEnv);
+
+        expect(result.status).toBe(200);
+        
+        // Should not post to any channel
+        expect(postToDiscord).not.toHaveBeenCalled();
+        
+        // Should not check or save to KV storage
+        expect(readFromKV).not.toHaveBeenCalled();
+        expect(saveToKV).not.toHaveBeenCalled();
       });
     });
 
