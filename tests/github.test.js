@@ -521,7 +521,7 @@ describe('GitHub Module', () => {
         expect(postToDiscord).not.toHaveBeenCalled();
       });
 
-      it('should post to contributions channel when issue has "needs texture" label', async () => {
+      it('should NOT post to contributions channel on "opened" action (even with asset labels)', async () => {
         const issueWithTexture = {
           ...baseIssue,
           labels: [{ name: 'needs texture' }]
@@ -537,48 +537,19 @@ describe('GitHub Module', () => {
         const result = await handleGitHubWebhook(mockRequest);
 
         expect(result.status).toBe(200);
-        // Should call postToDiscord twice - once for issues channel, once for contributions
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        // Should only post to issues channel, not contributions (to avoid duplicates when labeled webhook fires)
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
         
-        // First call to issues channel
-        expect(postToDiscord).toHaveBeenNthCalledWith(1,
+        // Only call to issues channel
+        expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/issues',
           expect.objectContaining({
             username: 'LotR ME Mod Issues'
           })
         );
-        
-        // Second call to contributions channel with thread
-        expect(postToDiscord).toHaveBeenNthCalledWith(2,
-          'https://discord.com/api/webhooks/123/contributions',
-          expect.objectContaining({
-            username: 'LotR ME Mod Issues',
-            thread_name: 'Test Issue',
-            applied_tags: ['1283839733826584738'], // textureAndModel tag
-            embeds: expect.arrayContaining([
-              expect.objectContaining({
-                title: 'Test Issue',
-                description: 'This is a test issue'
-              })
-            ]),
-            components: expect.arrayContaining([
-              expect.objectContaining({
-                type: 1,
-                components: expect.arrayContaining([
-                  expect.objectContaining({
-                    type: 2,
-                    style: 5,
-                    label: 'Issue on GitHub',
-                    url: 'https://github.com/test/test/issues/1'
-                  })
-                ])
-              })
-            ])
-          })
-        );
       });
 
-      it('should post to contributions channel when issue has "needs models" label', async () => {
+      it('should post to contributions channel when issue is labeled with "needs models"', async () => {
         const issueWithModels = {
           ...baseIssue,
           labels: [{ name: 'needs models' }]
@@ -586,18 +557,20 @@ describe('GitHub Module', () => {
 
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
-            action: 'opened',
+            action: 'labeled',
             issue: issueWithModels
           })
         };
 
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
         const result = await handleGitHubWebhook(mockRequest);
 
         expect(result.status).toBe(200);
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
-        
-        // Contributions channel should have textureAndModel tag
-        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+        // Should only post to contributions channel on "labeled" action
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
+        expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/contributions',
           expect.objectContaining({
             applied_tags: ['1283839733826584738'] // textureAndModel tag
@@ -605,7 +578,7 @@ describe('GitHub Module', () => {
         );
       });
 
-      it('should post to contributions channel when issue has "needs sounds" label', async () => {
+      it('should post to contributions channel when issue is labeled with "needs sounds"', async () => {
         const issueWithSounds = {
           ...baseIssue,
           labels: [{ name: 'needs sounds' }]
@@ -613,18 +586,20 @@ describe('GitHub Module', () => {
 
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
-            action: 'opened',
+            action: 'labeled',
             issue: issueWithSounds
           })
         };
 
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
         const result = await handleGitHubWebhook(mockRequest);
 
         expect(result.status).toBe(200);
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
-        
-        // Contributions channel should have sounds tag
-        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+        // Should only post to contributions channel on "labeled" action
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
+        expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/contributions',
           expect.objectContaining({
             applied_tags: ['1332372252368310353'] // sounds tag
@@ -632,7 +607,7 @@ describe('GitHub Module', () => {
         );
       });
 
-      it('should post to contributions channel when issue has "needs animations" label', async () => {
+      it('should post to contributions channel when issue is labeled with "needs animations"', async () => {
         const issueWithAnimations = {
           ...baseIssue,
           labels: [{ name: 'needs animations' }]
@@ -640,18 +615,20 @@ describe('GitHub Module', () => {
 
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
-            action: 'opened',
+            action: 'labeled',
             issue: issueWithAnimations
           })
         };
 
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
         const result = await handleGitHubWebhook(mockRequest);
 
         expect(result.status).toBe(200);
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
-        
-        // Contributions channel should have animations tag
-        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+        // Should only post to contributions channel on "labeled" action
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
+        expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/contributions',
           expect.objectContaining({
             applied_tags: ['1283839866878296074'] // animations tag
@@ -659,7 +636,7 @@ describe('GitHub Module', () => {
         );
       });
 
-      it('should post to contributions channel with multiple tags when issue has multiple asset labels', async () => {
+      it('should post to contributions channel with multiple tags when issue is labeled with multiple asset labels', async () => {
         const issueWithMultipleAssets = {
           ...baseIssue,
           labels: [
@@ -672,18 +649,20 @@ describe('GitHub Module', () => {
 
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
-            action: 'opened',
+            action: 'labeled',
             issue: issueWithMultipleAssets
           })
         };
 
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
         const result = await handleGitHubWebhook(mockRequest);
 
         expect(result.status).toBe(200);
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
-        
-        // Contributions channel should have all three tags
-        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+        // Should only post to contributions channel on "labeled" action
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
+        expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/contributions',
           expect.objectContaining({
             applied_tags: [
@@ -729,18 +708,22 @@ describe('GitHub Module', () => {
 
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
-            action: 'opened',
+            action: 'labeled',
             issue: issueWithMixedCase
           })
         };
 
+        // Mock KV to return null (not posted before)
+        readFromKV.mockResolvedValue(null);
+
         const result = await handleGitHubWebhook(mockRequest);
 
         expect(result.status).toBe(200);
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        // Should only post to contributions channel on "labeled" action
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
         
         // Should recognize mixed case labels and apply correct tags
-        expect(postToDiscord).toHaveBeenNthCalledWith(2,
+        expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/contributions',
           expect.objectContaining({
             applied_tags: [
@@ -840,7 +823,7 @@ describe('GitHub Module', () => {
         expect(saveToKV).not.toHaveBeenCalled();
       });
 
-      it('should post to both channels on opened action without env parameter (backward compatibility)', async () => {
+      it('should NOT post to contributions on opened action without env parameter', async () => {
         const issueWithAssetLabel = {
           ...baseIssue,
           number: 43,
@@ -859,8 +842,8 @@ describe('GitHub Module', () => {
 
         expect(result.status).toBe(200);
         
-        // Should post to both channels
-        expect(postToDiscord).toHaveBeenCalledTimes(2);
+        // Should only post to issues channel (not contributions, even with asset labels)
+        expect(postToDiscord).toHaveBeenCalledTimes(1);
         
         // Should not try to read from KV without env
         expect(readFromKV).not.toHaveBeenCalled();
