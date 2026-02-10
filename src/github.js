@@ -317,62 +317,62 @@ async function handleIssue(issue, action, env) {
         console.log(`Using current time as fallback: ${issue.created_at}`);
     }
     
-    // Format labels - convert array to string
-    let labelsText = "None";
-    if (issue.labels && issue.labels.length > 0) {
-        labelsText = issue.labels.map(label => label.name).join(", ");
-    }
-    
     // Single consolidated log with essential information
     console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url} (action: ${action})`);
 
-    // Create the Discord payload with the issue details
-    // Ensure values don't exceed Discord limits
+    // Prepare common data used by both channels
     const title = issue.title.length > 256 ? issue.title.substring(0, 253) + '...' : issue.title;
     const description = issue.body ? 
         (issue.body.length > 4096 ? issue.body.substring(0, 4093) + '...' : issue.body) : 
         "No description provided";
     
-    const payload = {
-        username: "LotR ME Mod Issues",
-        avatar_url: AVATAR_URL,
-        embeds: [
-            {
-                title: title,
-                author: {
-                    name: issue.user?.login || 'Unknown User'
-                },
-                description: description,
-                fields: [
-                    {
-                        name: "Labels",
-                        value: labelsText
-                    }
-                ],
-                timestamp: issue.created_at,
-                footer: {
-                    text: "This issue was created on GitHub"
-                }
-            }
-        ],
-        components: [
-            {
-                type: 1, // Action Row
-                components: [
-                    {
-                        type: 2, // Button
-                        style: 5, // Link style
-                        label: "Issue on GitHub",
-                        url: issue.html_url
-                    }
-                ]
-            }
-        ]
-    };
-
     // Only post to issues channel if action is "opened"
     let issuesResponse;
     if (action === "opened") {
+        // Format labels - convert array to string
+        let labelsText = "None";
+        if (issue.labels && issue.labels.length > 0) {
+            labelsText = issue.labels.map(label => label.name).join(", ");
+        }
+        
+        // Create the Discord payload with the issue details
+        const payload = {
+            username: "LotR ME Mod Issues",
+            avatar_url: AVATAR_URL,
+            embeds: [
+                {
+                    title: title,
+                    author: {
+                        name: issue.user?.login || 'Unknown User'
+                    },
+                    description: description,
+                    fields: [
+                        {
+                            name: "Labels",
+                            value: labelsText
+                        }
+                    ],
+                    timestamp: issue.created_at,
+                    footer: {
+                        text: "This issue was created on GitHub"
+                    }
+                }
+            ],
+            components: [
+                {
+                    type: 1, // Action Row
+                    components: [
+                        {
+                            type: 2, // Button
+                            style: 5, // Link style
+                            label: "Issue on GitHub",
+                            url: issue.html_url
+                        }
+                    ]
+                }
+            ]
+        };
+        
         issuesResponse = await postToDiscord(WEBHOOKS.issues, payload);
     } else {
         // For "labeled" action, we don't post to issues channel
