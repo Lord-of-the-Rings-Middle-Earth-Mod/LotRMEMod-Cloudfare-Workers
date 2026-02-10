@@ -26,8 +26,12 @@ export async function handleGitHubWebhook(request, env) {
         return handleRelease(data.release);
     }
     // If it's an issue, handle it
-    else if (data.issue && (data.action == "opened" || data.action == "labeled")) {
-        return handleIssue(data.issue, data.action, env);
+    else if (data.issue) {
+        if (data.action === "opened") {
+            return handleIssueOpened(data.issue, env);
+        } else if (data.action === "labeled") {
+            return handleIssueLabeled(data.issue, env);
+        }
     }
     // If it's a pull request, handle it
     else if (data.pull_request) {
@@ -297,11 +301,11 @@ function getDiscordTags(labels) {
     return tags;
 }
 
-// Function to handle GitHub Issues
-async function handleIssue(issue, action, env) {
+// Helper function to validate and prepare issue data
+function validateAndPrepareIssue(issue) {
     if (!issue) {
-        console.error('handleIssue called with null or undefined issue');
-        return new Response("Invalid issue data", { status: 400 });
+        console.error('Issue validation failed: null or undefined issue');
+        return null;
     }
     
     // Validate timestamp
@@ -317,141 +321,152 @@ async function handleIssue(issue, action, env) {
         console.log(`Using current time as fallback: ${issue.created_at}`);
     }
     
-    // Single consolidated log with essential information
-    console.log(`Processing GitHub issue "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url} (action: ${action})`);
-
-    // Prepare common data used by both channels
+    // Prepare common data
     const title = issue.title.length > 256 ? issue.title.substring(0, 253) + '...' : issue.title;
     const description = issue.body ? 
         (issue.body.length > 4096 ? issue.body.substring(0, 4093) + '...' : issue.body) : 
         "No description provided";
     
-    // Only post to issues channel if action is "opened"
-    let issuesResponse;
-    if (action === "opened") {
-        // Format labels - convert array to string
-        let labelsText = "None";
-        if (issue.labels && issue.labels.length > 0) {
-            labelsText = issue.labels.map(label => label.name).join(", ");
-        }
-        
-        // Create the Discord payload with the issue details
-        const payload = {
-            username: "LotR ME Mod Issues",
-            avatar_url: AVATAR_URL,
-            embeds: [
-                {
-                    title: title,
-                    author: {
-                        name: issue.user?.login || 'Unknown User'
-                    },
-                    description: description,
-                    fields: [
-                        {
-                            name: "Labels",
-                            value: labelsText
-                        }
-                    ],
-                    timestamp: issue.created_at,
-                    footer: {
-                        text: "This issue was created on GitHub"
-                    }
-                }
-            ],
-            components: [
-                {
-                    type: 1, // Action Row
-                    components: [
-                        {
-                            type: 2, // Button
-                            style: 5, // Link style
-                            label: "Issue on GitHub",
-                            url: issue.html_url
-                        }
-                    ]
-                }
-            ]
-        };
-        
-        issuesResponse = await postToDiscord(WEBHOOKS.issues, payload);
-    } else {
-        // For "labeled" action, we don't post to issues channel
-        issuesResponse = new Response("Success", { status: 200 });
+    return { title, description };
+}
+
+// Function to handle GitHub Issue opened events
+async function handleIssueOpened(issue, env) {
+    const prepared = validateAndPrepareIssue(issue);
+    if (!prepared) {
+        return new Response("Invalid issue data", { status: 400 });
     }
+    
+    const { title, description } = prepared;
+    
+    console.log(`Processing GitHub issue opened: "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url}`);
+    
+    // Format labels - convert array to string
+    let labelsText = "None";
+    if (issue.labels && issue.labels.length > 0) {
+        labelsText = issue.labels.map(label => label.name).join(", ");
+    }
+    
+    // Create the Discord payload with the issue details
+    const payload = {
+        username: "LotR ME Mod Issues",
+        avatar_url: AVATAR_URL,
+        embeds: [
+            {
+                title: title,
+                author: {
+                    name: issue.user?.login || 'Unknown User'
+                },
+                description: description,
+                fields: [
+                    {
+                        name: "Labels",
+                        value: labelsText
+                    }
+                ],
+                timestamp: issue.created_at,
+                footer: {
+                    text: "This issue was created on GitHub"
+                }
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "Issue on GitHub",
+                        url: issue.html_url
+                    }
+                ]
+            }
+        ]
+    };
+    
+    return await postToDiscord(WEBHOOKS.issues, payload);
+}
+
+// Function to handle GitHub Issue labeled events
+async function handleIssueLabeled(issue, env) {
+    const prepared = validateAndPrepareIssue(issue);
+    if (!prepared) {
+        return new Response("Invalid issue data", { status: 400 });
+    }
+    
+    const { title, description } = prepared;
+    
+    console.log(`Processing GitHub issue labeled: "${issue.title}" by ${issue.user?.login || 'unknown user'} - ${issue.html_url}`);
     
     // Check if issue has asset-related labels
-    // Only post to contributions channel on "labeled" action to avoid duplicates
-    // (when an issue is created with labels, GitHub sends both "opened" and "labeled" webhooks)
-    if (hasAssetLabels(issue.labels) && action === "labeled") {
-        // Check KV storage to see if we've already posted this issue to contributions
-        const kvKey = `contributions_issue_${issue.number}`;
-        const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
-        
-        if (alreadyPosted) {
-            console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
-            return issuesResponse;
-        }
-        
-        console.log(`Issue #${issue.number || 'unknown'} "${title}" has asset labels, posting to contributions channel`);
-        
-        // Get Discord tags based on GitHub labels
-        const discordTags = getDiscordTags(issue.labels);
-        
-        // Create a thread-based payload for the contributions forum channel
-        const contributionsPayload = {
-            username: "LotR ME Mod Issues",
-            avatar_url: AVATAR_URL,
-            thread_name: title,
-            applied_tags: discordTags,
-            embeds: [
-                {
-                    title: title,
-                    author: {
-                        name: issue.user?.login || 'Unknown User'
-                    },
-                    description: description,
-                    timestamp: issue.created_at,
-                    footer: {
-                        text: "This issue was created on GitHub"
-                    }
-                }
-            ],
-            components: [
-                {
-                    type: 1, // Action Row
-                    components: [
-                        {
-                            type: 2, // Button
-                            style: 5, // Link style
-                            label: "Issue on GitHub",
-                            url: issue.html_url
-                        }
-                    ]
-                }
-            ]
-        };
-        
-        // Post to contributions channel
-        const contributionsResponse = await postToDiscord(WEBHOOKS.contributions, contributionsPayload);
-        
-        // If successful, store in KV to prevent duplicates
-        if (contributionsResponse.status === 200 && env) {
-            await saveToKV(env, KV_NAMESPACE, kvKey, {
-                issueNumber: issue.number,
-                title: issue.title,
-                postedAt: new Date().toISOString()
-            });
-            console.log(`Stored issue #${issue.number} in KV storage to prevent duplicates`);
-        }
-        
-        // Return contributions response, but log if issues post succeeded
-        if (action === "opened" && issuesResponse.status === 200 && contributionsResponse.status !== 200) {
-            console.log('Issue posted to issues channel successfully, but contributions channel post failed');
-        }
-        return contributionsResponse;
+    if (!hasAssetLabels(issue.labels)) {
+        console.log(`Issue #${issue.number || 'unknown'} does not have asset labels, skipping contributions post`);
+        return new Response("Success", { status: 200 });
     }
     
-    return issuesResponse;
+    // Check KV storage to see if we've already posted this issue to contributions
+    const kvKey = `contributions_issue_${issue.number}`;
+    const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
+    
+    if (alreadyPosted) {
+        console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
+        return new Response("Success", { status: 200 });
+    }
+    
+    console.log(`Issue #${issue.number || 'unknown'} "${title}" has asset labels, posting to contributions channel`);
+    
+    // Get Discord tags based on GitHub labels
+    const discordTags = getDiscordTags(issue.labels);
+    
+    // Create a thread-based payload for the contributions forum channel
+    const contributionsPayload = {
+        username: "LotR ME Mod Issues",
+        avatar_url: AVATAR_URL,
+        thread_name: title,
+        applied_tags: discordTags,
+        embeds: [
+            {
+                title: title,
+                author: {
+                    name: issue.user?.login || 'Unknown User'
+                },
+                description: description,
+                timestamp: issue.created_at,
+                footer: {
+                    text: "This issue was created on GitHub"
+                }
+            }
+        ],
+        components: [
+            {
+                type: 1, // Action Row
+                components: [
+                    {
+                        type: 2, // Button
+                        style: 5, // Link style
+                        label: "Issue on GitHub",
+                        url: issue.html_url
+                    }
+                ]
+            }
+        ]
+    };
+    
+    // Post to contributions channel
+    const contributionsResponse = await postToDiscord(WEBHOOKS.contributions, contributionsPayload);
+    
+    // If successful, store in KV to prevent duplicates
+    if (contributionsResponse.status === 200 && env) {
+        await saveToKV(env, KV_NAMESPACE, kvKey, {
+            issueNumber: issue.number,
+            title: issue.title,
+            postedAt: new Date().toISOString()
+        });
+        console.log(`Stored issue #${issue.number} in KV storage to prevent duplicates`);
+    }
+    
+    return contributionsResponse;
 }
 
 // Function to handle GitHub Pull Requests
