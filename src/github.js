@@ -374,7 +374,7 @@ async function handleIssue(issue) {
     
     // Check if issue has asset-related labels
     if (hasAssetLabels(issue.labels)) {
-        console.log('Issue has asset labels, posting to contributions channel');
+        console.log(`Issue #${issue.number || 'unknown'} "${title}" has asset labels, posting to contributions channel`);
         
         // Get Discord tags based on GitHub labels
         const discordTags = getDiscordTags(issue.labels);
@@ -413,8 +413,14 @@ async function handleIssue(issue) {
             ]
         };
         
-        // Post to contributions channel and return that response
-        return postToDiscord(WEBHOOKS.contributions, contributionsPayload);
+        // Post to contributions channel
+        const contributionsResponse = await postToDiscord(WEBHOOKS.contributions, contributionsPayload);
+        
+        // Return contributions response, but log if issues post succeeded
+        if (issuesResponse.status === 200 && contributionsResponse.status !== 200) {
+            console.log('Issue posted to issues channel successfully, but contributions channel post failed');
+        }
+        return contributionsResponse;
     }
     
     return issuesResponse;
