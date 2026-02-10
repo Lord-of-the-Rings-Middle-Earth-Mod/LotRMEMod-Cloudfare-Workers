@@ -56,7 +56,8 @@ export const WEBHOOKS = {
   fabricblog: "https://discord.com/api/webhooks/...",  // Fabric RSS updates
   mails: "https://discord.com/api/webhooks/...",       // Email forwarding
   issues: "https://discord.com/api/webhooks/...",      // GitHub issues
-  prs: "https://discord.com/api/webhooks/..."          // GitHub pull requests
+  prs: "https://discord.com/api/webhooks/...",         // GitHub pull requests
+  contributions: "https://discord.com/api/webhooks/..." // Asset-related issues (forum)
 };
 ```
 

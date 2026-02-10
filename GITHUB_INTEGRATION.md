@@ -25,6 +25,7 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 - **WEBHOOKS.prs** for pull request notifications
 - **WEBHOOKS.wiki** for wiki change notifications
 - **WEBHOOKS.workflows** for GitHub Actions workflow run notifications
+- **WEBHOOKS.contributions** for asset-related GitHub issues (forum channel)
 
 **Important:** Replace placeholder URLs with actual Discord webhook URLs from your server settings. URLs containing "PLACEHOLDER" will cause 405 Method Not Allowed errors.
 
@@ -115,6 +116,18 @@ Before the integration can work, you must configure valid Discord webhook URLs i
   - Includes "Issue on GitHub" button linking to the original issue
   - Handles issues with or without labels and descriptions
   - Only processes "opened" action events
+
+- **Asset-Related Issues**:
+  - Issues with asset labels also route to contributions forum channel
+  - **Detected Labels**: "needs texture", "needs models", "needs sounds", "needs animations"
+  - **Label Matching**: Case-insensitive detection for robustness
+  - **Forum Thread Creation**: Creates a new thread with the issue title as thread name
+  - **Discord Tags**: Automatically applies forum tags based on GitHub labels:
+    - "needs texture" or "needs models" → "Texture and Model" tag (1283839733826584738)
+    - "needs animations" → "Animations" tag (1283839866878296074)
+    - "needs sounds" → "Sounds" tag (1332372252368310353)
+  - **Multiple Labels**: Issues with multiple asset labels create one thread with multiple tags
+  - **Dual Posting**: Asset-related issues are posted to both the issues channel and contributions forum
 
 ### Discussions
 - **Announcements Category**: 
@@ -291,6 +304,8 @@ Before the integration can work, you must configure valid Discord webhook URLs i
 ```
 
 ### Issue Messages
+
+**Standard Issues Channel:**
 ```json
 {
   "username": "LotR ME Mod Issues",
@@ -305,6 +320,38 @@ Before the integration can work, you must configure valid Discord webhook URLs i
       "name": "Labels",
       "value": "{comma-separated labels or 'None'}"
     }],
+    "timestamp": "ISO Date",
+    "footer": { "text": "This issue was created on GitHub" }
+  }],
+  "components": [{
+    "type": 1,
+    "components": [{
+      "type": 2,
+      "style": 5,
+      "label": "Issue on GitHub",
+      "url": "{issue.html_url}"
+    }]
+  }]
+}
+```
+
+**Contributions Forum (Asset-Related Issues):**
+```json
+{
+  "username": "LotR ME Mod Issues",
+  "avatar_url": "https://gravatar.com/userimage/252885236/50dd5bda073144e4f2505039bf8bb6a0.jpeg?size=256",
+  "thread_name": "{issue.title}",
+  "applied_tags": [
+    "1283839733826584738",  // Texture and Model (if needs texture/models)
+    "1283839866878296074",  // Animations (if needs animations)
+    "1332372252368310353"   // Sounds (if needs sounds)
+  ],
+  "embeds": [{
+    "title": "{issue.title}",
+    "author": {
+      "name": "{issue.user.login}"
+    },
+    "description": "{issue.body}",
     "timestamp": "ISO Date",
     "footer": { "text": "This issue was created on GitHub" }
   }],
@@ -500,7 +547,10 @@ To test the GitHub integration:
    - Create, edit, or delete a wiki page - should post notification with list of changes
    - Create multiple wiki pages in one session - should show all changes in one message
    - Verify buttons are created for edited and created pages
-3. **Issue Test**: Create a new issue in the repository
+3. **Issue Test**: 
+   - Create a regular issue - should post to issues channel only
+   - Create an issue with "needs texture" label - should post to both issues and contributions channels
+   - Create an issue with multiple asset labels (e.g., "needs texture" and "needs sounds") - should create one thread with multiple tags in contributions channel
 4. **Discussion Test**: Create a new discussion in Announcements or Ideas categories
 5. **Release Test**: Publish a new release in the repository
 6. **Pull Request Tests**: 
