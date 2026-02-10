@@ -380,7 +380,9 @@ async function handleIssue(issue, action, env) {
     }
     
     // Check if issue has asset-related labels
-    if (hasAssetLabels(issue.labels)) {
+    // Only post to contributions channel on "labeled" action to avoid duplicates
+    // (when an issue is created with labels, GitHub sends both "opened" and "labeled" webhooks)
+    if (hasAssetLabels(issue.labels) && action === "labeled") {
         // Check KV storage to see if we've already posted this issue to contributions
         const kvKey = `contributions_issue_${issue.number}`;
         const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
