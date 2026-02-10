@@ -2,6 +2,9 @@ import { postToDiscord } from './discord.js'; // For sending messages to Discord
 import { WEBHOOKS, PINGS, TAGS, AVATAR_URL, FOOTER_TEXT, GITHUB_REPO, KV_NAMESPACE } from './config.js'; // The Webhook URLs, Pings, Tags, Avatar, and Footer Text
 import { readFromKV, saveToKV } from './kvutils.js'; // For KV storage operations
 
+// Time window (in seconds) to consider a duplicate webhook from multiple simultaneous label additions
+const DUPLICATE_WEBHOOK_WINDOW_SECONDS = 30;
+
 export async function handleGitHubWebhook(request, env) {
     const data = await request.json();
 
@@ -410,19 +413,19 @@ async function handleIssueLabeled(issue, env) {
     const alreadyPosted = env ? await readFromKV(env, KV_NAMESPACE, kvKey) : null;
     
     if (alreadyPosted) {
-        // Check if the post was recent (within 30 seconds) to handle race conditions
+        // Check if the post was recent (within the duplicate window) to handle race conditions
         // when multiple labels trigger simultaneous webhooks
         const postedTime = new Date(alreadyPosted.postedAt).getTime();
         const now = Date.now();
         const timeDiffSeconds = (now - postedTime) / 1000;
         
-        // If posted within the last 30 seconds, it's likely a duplicate webhook from multiple labels
-        if (timeDiffSeconds < 30) {
+        // If posted within the duplicate window, it's likely a duplicate webhook from multiple labels
+        if (timeDiffSeconds < DUPLICATE_WEBHOOK_WINDOW_SECONDS) {
             console.log(`Issue #${issue.number} "${title}" was posted ${timeDiffSeconds.toFixed(1)}s ago, skipping duplicate`);
             return new Response("Success", { status: 200 });
         }
         
-        // If it was posted more than 30 seconds ago, log but still skip to prevent re-posting
+        // If it was posted more than the duplicate window ago, log but still skip to prevent re-posting
         console.log(`Issue #${issue.number} "${title}" has already been posted to contributions channel, skipping`);
         return new Response("Success", { status: 200 });
     }
