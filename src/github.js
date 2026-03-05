@@ -858,13 +858,14 @@ async function downloadArtifact(artifactId, githubToken) {
         console.log('No GitHub token provided, skipping artifact download');
         return null;
     }
-    
+
     try {
         const apiUrl = `https://api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.repo}/actions/artifacts/${artifactId}/zip`;
-        
-        console.log(`Downloading artifact ${artifactId} from: ${apiUrl}`);
-        
-        // First request: Get the redirect URL (GitHub returns 302 with Location header)
+
+        console.log(`Downloading artifact ${artifactId}`);
+
+        // Cloudflare Workers drops the Authorization header on cross-origin redirects
+        // (GitHub → Azure). Using redirect: 'follow' is therefore safe and correct.
         const response = await fetch(apiUrl, {
             headers: {
                 'Authorization': `Bearer ${githubToken}`,
@@ -872,43 +873,18 @@ async function downloadArtifact(artifactId, githubToken) {
                 'X-GitHub-Api-Version': '2022-11-28',
                 'User-Agent': 'LotRMEMod-Cloudflare-Worker'
             },
-            redirect: 'manual'  // Don't follow redirects automatically
+            redirect: 'follow'
         });
-        
-        // GitHub API returns 301 or 302 with Location header pointing to the actual download URL
-        if (response.status !== 301 && response.status !== 302) {
-            console.error(`Failed to get artifact download URL: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+            console.error(`Failed to download artifact: ${response.status} ${response.statusText}`);
             return null;
         }
-        
-        // Extract the redirect URL from the Location header
-        const downloadUrl = response.headers.get('Location');
-        if (!downloadUrl) {
-            console.error('No Location header in redirect response');
-            return null;
-        }
-        
-        console.log(`Got redirect URL for artifact ${artifactId}, downloading from storage...`);
-        
-        // Second request: Download the actual artifact from the redirect URL
-        // Note: The redirect URL contains embedded SAS authentication
-        // We must NOT include Authorization headers as they conflict with Azure's SAS token
-        // Explicitly configure the request with empty headers for Cloudflare Workers
-        const downloadResponse = await fetch(downloadUrl, {
-            method: 'GET',
-            headers: {}  // Empty headers - do NOT add Authorization header
-        });
-        
-        if (!downloadResponse.ok) {
-            console.error(`Failed to download artifact from storage: ${downloadResponse.status} ${downloadResponse.statusText}`);
-            return null;
-        }
-        
-        // Get the artifact as a blob
-        const blob = await downloadResponse.blob();
+
+        const blob = await response.blob();
         console.log(`Successfully downloaded artifact ${artifactId}, size: ${blob.size} bytes`);
-        
         return blob;
+
     } catch (error) {
         console.error(`Error downloading artifact ${artifactId}:`, error);
         return null;
