@@ -1914,60 +1914,42 @@ describe('GitHub Module', () => {
       });
 
       it('should fetch and attach artifacts for successful workflows with GITHUB_TOKEN', async () => {
-        // Mock GitHub API responses
         const mockArtifact = {
           id: 123456,
           name: 'build-artifacts',
           size_in_bytes: 1024
         };
-        
+
         const mockArtifactsResponse = {
           ok: true,
-          json: vi.fn().mockResolvedValue({
-            artifacts: [mockArtifact]
-          })
+          json: vi.fn().mockResolvedValue({ artifacts: [mockArtifact] })
         };
-        
-        // Mock the 302 redirect response from GitHub API
-        const mockRedirectResponse = {
-          status: 302,
-          ok: false,
-          headers: {
-            get: vi.fn().mockReturnValue('https://storage.example.com/artifact.zip?token=abc123')
-          }
-        };
-        
+
         const mockBlobData = new Blob(['test artifact data'], { type: 'application/zip' });
         const mockDownloadResponse = {
           ok: true,
           blob: vi.fn().mockResolvedValue(mockBlobData)
         };
-        
-        // Mock fetch for GitHub API calls
+
+        // Two fetch calls: (1) artifact list, (2) direct download with redirect: 'follow'
         global.fetch = vi.fn()
-          .mockResolvedValueOnce(mockArtifactsResponse)   // artifacts list
-          .mockResolvedValueOnce(mockRedirectResponse)    // redirect to download URL
-          .mockResolvedValueOnce(mockDownloadResponse);   // actual artifact download from storage
-        
+          .mockResolvedValueOnce(mockArtifactsResponse)
+          .mockResolvedValueOnce(mockDownloadResponse);
+
         const mockRequest = {
           json: vi.fn().mockResolvedValue({
             action: 'completed',
-            workflow_run: {
-              ...baseWorkflowRun,
-              id: 789
-            }
+            workflow_run: { ...baseWorkflowRun, id: 789 }
           })
         };
-        
-        const mockEnv = {
-          GITHUB_TOKEN: 'test-token'
-        };
+
+        const mockEnv = { GITHUB_TOKEN: 'test-token' };
 
         const result = await handleGitHubWebhook(mockRequest, mockEnv);
 
         expect(result.status).toBe(200);
-        
-        // Verify GitHub API was called to fetch artifacts
+
+        // Verify artifact list was fetched
         expect(global.fetch).toHaveBeenCalledWith(
           'https://api.github.com/repos/test-owner/test-repo/actions/runs/789/artifacts',
           expect.objectContaining({
@@ -1976,28 +1958,19 @@ describe('GitHub Module', () => {
             })
           })
         );
-        
-        // Verify artifact download was called with redirect: 'manual'
+
+        // Verify artifact was downloaded with redirect: 'follow' (not 'manual')
         expect(global.fetch).toHaveBeenCalledWith(
           'https://api.github.com/repos/test-owner/test-repo/actions/artifacts/123456/zip',
           expect.objectContaining({
             headers: expect.objectContaining({
               'Authorization': 'Bearer test-token'
             }),
-            redirect: 'manual'
+            redirect: 'follow'
           })
         );
-        
-        // Verify the redirect URL was called to download the artifact with explicit configuration
-        expect(global.fetch).toHaveBeenCalledWith(
-          'https://storage.example.com/artifact.zip?token=abc123',
-          expect.objectContaining({
-            method: 'GET',
-            headers: expect.any(Object)
-          })
-        );
-        
-        // Verify postToDiscord was called with the artifact file
+
+        // Verify Discord received the artifact as an attachment
         expect(postToDiscord).toHaveBeenCalledWith(
           'https://discord.com/api/webhooks/123/workflows',
           expect.objectContaining({
@@ -2012,73 +1985,6 @@ describe('GitHub Module', () => {
         );
       });
 
-      it('should handle 301 redirect for artifact downloads', async () => {
-        const mockArtifact = {
-          id: 123456,
-          name: 'build-artifacts',
-          size_in_bytes: 1024
-        };
-        
-        const mockArtifactsResponse = {
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            artifacts: [mockArtifact]
-          })
-        };
-        
-        // Mock the 301 redirect response from GitHub API (instead of 302)
-        const mockRedirectResponse = {
-          status: 301,
-          ok: false,
-          headers: {
-            get: vi.fn().mockReturnValue('https://storage.example.com/artifact.zip?token=abc123')
-          }
-        };
-        
-        const mockBlobData = new Blob(['test artifact data'], { type: 'application/zip' });
-        const mockDownloadResponse = {
-          ok: true,
-          blob: vi.fn().mockResolvedValue(mockBlobData)
-        };
-        
-        // Mock fetch for GitHub API calls
-        global.fetch = vi.fn()
-          .mockResolvedValueOnce(mockArtifactsResponse)   // artifacts list
-          .mockResolvedValueOnce(mockRedirectResponse)    // 301 redirect to download URL
-          .mockResolvedValueOnce(mockDownloadResponse);   // actual artifact download from storage
-        
-        const mockRequest = {
-          json: vi.fn().mockResolvedValue({
-            action: 'completed',
-            workflow_run: {
-              ...baseWorkflowRun,
-              id: 789
-            }
-          })
-        };
-        
-        const mockEnv = {
-          GITHUB_TOKEN: 'test-token'
-        };
-
-        const result = await handleGitHubWebhook(mockRequest, mockEnv);
-
-        expect(result.status).toBe(200);
-        
-        // Verify postToDiscord was called with the artifact file
-        expect(postToDiscord).toHaveBeenCalledWith(
-          'https://discord.com/api/webhooks/123/workflows',
-          expect.objectContaining({
-            embeds: expect.arrayContaining([
-              expect.objectContaining({
-                description: expect.stringContaining('build-artifacts')
-              })
-            ])
-          }),
-          mockBlobData,
-          'build-artifacts.zip'
-        );
-      });
 
       it('should handle successful workflows without GITHUB_TOKEN', async () => {
         const mockRequest = {
@@ -2140,109 +2046,6 @@ describe('GitHub Module', () => {
         );
       });
 
-      it('should handle missing Location header in redirect response', async () => {
-        // Mock artifact list response
-        const mockArtifactsResponse = {
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            artifacts: [{
-              id: 123456,
-              name: 'build-artifacts',
-              size_in_bytes: 1024
-            }]
-          })
-        };
-        
-        // Mock redirect response without Location header
-        const mockRedirectResponse = {
-          status: 302,
-          ok: false,
-          headers: {
-            get: vi.fn().mockReturnValue(null)  // No Location header
-          }
-        };
-        
-        global.fetch = vi.fn()
-          .mockResolvedValueOnce(mockArtifactsResponse)
-          .mockResolvedValueOnce(mockRedirectResponse);
-        
-        const mockRequest = {
-          json: vi.fn().mockResolvedValue({
-            action: 'completed',
-            workflow_run: {
-              ...baseWorkflowRun,
-              id: 789
-            }
-          })
-        };
-        
-        const mockEnv = {
-          GITHUB_TOKEN: 'test-token'
-        };
-
-        const result = await handleGitHubWebhook(mockRequest, mockEnv);
-
-        expect(result.status).toBe(200);
-        
-        // Verify postToDiscord was called without artifacts (graceful failure)
-        expect(postToDiscord).toHaveBeenCalledWith(
-          'https://discord.com/api/webhooks/123/workflows',
-          expect.any(Object),
-          null,
-          null
-        );
-      });
-
-      it('should handle non-302 response from artifact download endpoint', async () => {
-        // Mock artifact list response
-        const mockArtifactsResponse = {
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            artifacts: [{
-              id: 123456,
-              name: 'build-artifacts',
-              size_in_bytes: 1024
-            }]
-          })
-        };
-        
-        // Mock unexpected response (not 302)
-        const mockUnexpectedResponse = {
-          status: 401,
-          ok: false,
-          statusText: 'Unauthorized'
-        };
-        
-        global.fetch = vi.fn()
-          .mockResolvedValueOnce(mockArtifactsResponse)
-          .mockResolvedValueOnce(mockUnexpectedResponse);
-        
-        const mockRequest = {
-          json: vi.fn().mockResolvedValue({
-            action: 'completed',
-            workflow_run: {
-              ...baseWorkflowRun,
-              id: 789
-            }
-          })
-        };
-        
-        const mockEnv = {
-          GITHUB_TOKEN: 'test-token'
-        };
-
-        const result = await handleGitHubWebhook(mockRequest, mockEnv);
-
-        expect(result.status).toBe(200);
-        
-        // Verify postToDiscord was called without artifacts (graceful failure)
-        expect(postToDiscord).toHaveBeenCalledWith(
-          'https://discord.com/api/webhooks/123/workflows',
-          expect.any(Object),
-          null,
-          null
-        );
-      });
 
       it('should handle artifact fetch errors gracefully', async () => {
         // Mock GitHub API to return error
@@ -2281,76 +2084,6 @@ describe('GitHub Module', () => {
         );
       });
 
-      it('should handle 403 error from Azure blob storage download', async () => {
-        // Mock artifact list response
-        const mockArtifactsResponse = {
-          ok: true,
-          json: vi.fn().mockResolvedValue({
-            artifacts: [{
-              id: 123456,
-              name: 'build-artifacts',
-              size_in_bytes: 1024
-            }]
-          })
-        };
-        
-        // Mock 302 redirect response with Location header
-        const mockRedirectResponse = {
-          status: 302,
-          ok: false,
-          statusText: 'Found',
-          headers: {
-            get: vi.fn().mockReturnValue('https://storage.example.com/artifact.zip?token=abc123')
-          }
-        };
-        
-        // Mock 403 response from Azure blob storage
-        const mock403Response = {
-          status: 403,
-          ok: false,
-          statusText: 'Forbidden'
-        };
-        
-        global.fetch = vi.fn()
-          .mockResolvedValueOnce(mockArtifactsResponse)   // artifacts list
-          .mockResolvedValueOnce(mockRedirectResponse)    // redirect response
-          .mockResolvedValueOnce(mock403Response);        // 403 from Azure blob storage
-        
-        const mockRequest = {
-          json: vi.fn().mockResolvedValue({
-            action: 'completed',
-            workflow_run: {
-              ...baseWorkflowRun,
-              id: 789
-            }
-          })
-        };
-        
-        const mockEnv = {
-          GITHUB_TOKEN: 'test-token'
-        };
-
-        const result = await handleGitHubWebhook(mockRequest, mockEnv);
-
-        expect(result.status).toBe(200);
-        
-        // Verify that the download was attempted with proper configuration
-        expect(global.fetch).toHaveBeenCalledWith(
-          'https://storage.example.com/artifact.zip?token=abc123',
-          expect.objectContaining({
-            method: 'GET',
-            headers: expect.any(Object)
-          })
-        );
-        
-        // Verify postToDiscord was called without artifacts (graceful failure)
-        expect(postToDiscord).toHaveBeenCalledWith(
-          'https://discord.com/api/webhooks/123/workflows',
-          expect.any(Object),
-          null,
-          null
-        );
-      });
     });
   });
 });
